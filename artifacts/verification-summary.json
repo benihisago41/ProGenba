@@ -24,7 +24,8 @@
     "existing_database_matches_seed_tables": 14,
     "instructions": "artifacts/FRESH_START.md",
     "evidence": "artifacts/fresh-start.json",
-    "physical_other_pc_verified": false
+    "physical_other_pc_verified": true,
+    "physical_other_pc_evidence": "artifacts/fresh-start.json#physical_other_pc_verification"
   },
   "maintenance": {
     "branch": "ai/codex/completion-records",

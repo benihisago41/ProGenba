@@ -37,7 +37,7 @@ cd ProGenba
 2. 画面とサンプルデータの確認:
    ブラウザで <http://127.0.0.1:8080> を開き、「青葉台レジデンス新築工事」のコックピットとサンプル予算が表示されれば合格です。
 
-※別PC（実機間）でのクローンからの起動検証は現在未実施です。
+※別PC（Windows実機）でのクローンからの起動・画面登録・再起動保持は2026-10-21に確認済みです（`artifacts/fresh-start.json` の `physical_other_pc_verification`）。Linux/macOS実機、物理スマホ・LAN別端末は未実施です。
 
 元DBを移行しない判断の根拠と移行先での確認項目は [別環境向け手順](artifacts/FRESH_START.md)、実施済みの検証範囲は [新規構築の検証記録](artifacts/fresh-start.json) を参照してください。
 

@@ -102,8 +102,54 @@
   "registered_actual_cost": 101,
   "restart_values_unchanged": true,
   "original_runtime_restored_with_unchanged_data": true,
-  "physical_other_pc_verified": false,
+  "physical_other_pc_verified": true,
   "real_linux_macos_start_to_finish_verified": false,
   "fresh_browser_interaction_suite_rerun": false,
-  "historical_acceptance_files_overwritten": false
+  "historical_acceptance_files_overwritten": false,
+  "physical_other_pc_verification": {
+    "passed": true,
+    "checked_at": "2026-10-20T17:25:00Z",
+    "source_commit": "a027ed3",
+    "verification_environment": "second physical Windows PC (not the original host), Windows 11 Pro 10.0.26300, Docker Desktop 29.8.2 Linux containers, Docker Compose v5.6.0",
+    "source_input": "git clone of main from GitHub; no .env, DB dump, containers or retired logs from the original PC",
+    "startup_command": "pwsh -File scripts/start_local.ps1",
+    "env_generated_on_first_start": true,
+    "env_tracked_by_git": false,
+    "startup_exit_code": 0,
+    "startup_elapsed_seconds_including_first_build": 224,
+    "checkout_anchor_hashes": "4/4",
+    "anchor_line_endings": "LF",
+    "checks": {
+      "compose_app_up_db_healthy": true,
+      "health_http_status": 200,
+      "sample_project_branches_and_budget_displayed": true,
+      "initial_branches": 2,
+      "initial_actual_cost": 0,
+      "screen_registration": {
+        "method": "かんたん原価登録 > 買った材料・現場経費（直接費）",
+        "branch_key": "0000/PRJ-2026-A/000",
+        "work_type_code": "002000100010",
+        "cost_element_code": "0100",
+        "quantity": "2.000",
+        "unit_price": 18500,
+        "slip_no": "000000000001",
+        "amount_tax_ex": 37000,
+        "reflected_in_db": true,
+        "reflected_in_cockpit_api": true,
+        "reflected_in_screen": true
+      },
+      "compose_restart_readiness_seconds": 5,
+      "restart_cockpit_values_unchanged": true
+    },
+    "browser": "Claude desktop built-in browser (Chromium), desktop viewport",
+    "verification_data_retained_on_that_pc": {
+      "direct_cost_entries": 1,
+      "amount_tax_ex": 37000
+    },
+    "other_containers_or_volumes_modified": false,
+    "historical_acceptance_files_overwritten": false,
+    "physical_smartphone_or_lan_other_device_verified": false,
+    "real_linux_macos_start_to_finish_verified": false,
+    "fresh_browser_interaction_suite_rerun": false
+  }
 }
