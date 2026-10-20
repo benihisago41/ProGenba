@@ -20,3 +20,12 @@ Read-Onlyで提供された `CONVENTIONS.md`, `migrations/001_core_cost_schema.s
   - 上記 `Dockerfile` をビルドし、`db` の `service_healthy` 後に自動起動。
   - ポート `8080:8080` を公開し、社内LANのどのPC・タブレット・スマホのブラウザからも `http://<ホストIP>:8080` で即座に利用可能にする。
   - `restart: unless-stopped` を設定し、PC再起動時も人手を介さず自動復旧させる。
+
+## 管理者による確定補足
+- 編集担当はDockerfile/docker-compose.ymlの2つのみ。アンカー/ソース/依存を変更しない。他者の変更を戻さない。コマンド・commit・pushは禁止。
+- 構成はアプリとPostgreSQL16の2サービス。name: progenba を設定し、各サービスのlabelsに ai.agent: codex を設定する。container_nameは指定しない。
+- Rust builderは既定rust:1.80-bookwormを維持し、cargo build --release --locked。frontend builderはnode:22-alpineでnpm ci && npm run build。COPY対象は各サブディレクトリとlockfileを含める。runtimeはdebian:bookworm-slim＋ca-certificates/libssl3。単一バイナリと/app/staticをコピーしUSER 10001:10001で実行。EXPOSE8080。STATIC_DIR=/app/static。
+- dbのPOSTGRES_USERはsirius、POSTGRES_DBはsirius_reborn、POSTGRES_PASSWORDは ${POSTGRES_PASSWORD:?環境変数POSTGRES_PASSWORDを設定してください} として.envから取得。接続文字列をログに出さない。dbのhostポートは公開しない。
+- appのDATABASE_URLは上記dbサービス名・ユーザー・パスワードと一致。portsは ${APP_BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-8080}:8080。検証後に明示設定で社内LANに公開できる。db healthcheckはpg_isready、appはservice_healthyを待機。両方restart unless-stopped。
+- dbのnamed volume pgdataで永続化し、001のDDLを初回だけread-onlyマウントする。アプリ起動毎にシード再投入しない。
+- 現状のmainに未実装のhealthcheckコマンド引数などを想定して追加しない。

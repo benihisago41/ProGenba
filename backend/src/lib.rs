@@ -1,2 +1,1 @@
-#[path = "domain/types.rs"]
-pub mod contract_types;
+pub mod domain;

@@ -48,7 +48,7 @@ if ($violations.Count -eq 0 -and $Session -eq 5) {
         elseif (!(Get-Content -LiteralPath $evidence -Raw | ConvertFrom-Json).passed) { $violations.Add("[ACCEPTANCE_FAILED] $evidence") }
     }
 }
-$result = [ordered]@{ session=$Session; passed=($violations.Count -eq 0); checked_at=(Get-Date).ToUniversalTime().ToString('o'); commit=(& git rev-parse HEAD); violations=@($violations) }
+$result = [ordered]@{ session=$Session; passed=($violations.Count -eq 0); checked_at=(Get-Date).ToUniversalTime().ToString('o'); commit=(& git rev-parse HEAD); violations=$violations.ToArray() }
 $result | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath "artifacts/gate-$Session.json" -Encoding utf8
 if ($violations.Count) { $violations | ForEach-Object { Write-Host $_ }; Write-Host '[GATE FAILED]'; exit 1 }
 Write-Host "[GATE PASSED] Session $Session"
