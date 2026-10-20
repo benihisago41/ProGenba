@@ -1,0 +1,109 @@
+{
+  "passed": true,
+  "checked_at": "2026-10-20T17:14:19.1121276Z",
+  "source_commit": "5bdcb15",
+  "verification_environment": "same Windows host, Docker Linux containers linux/amd64, isolated fresh Compose volume; not a second physical PC",
+  "source_input": "git archive of tracked repository files only",
+  "original_env_or_db_dump_or_retired_logs_used": false,
+  "database_migration_required_at_inspection": false,
+  "current_database_matches_fresh_seed_tables": 14,
+  "table_comparisons": [
+    {
+      "table": "business_partners",
+      "rows": 6,
+      "seed_matches_current": true
+    },
+    {
+      "table": "construction_equipment_masters",
+      "rows": 2,
+      "seed_matches_current": true
+    },
+    {
+      "table": "cost_elements",
+      "rows": 5,
+      "seed_matches_current": true
+    },
+    {
+      "table": "direct_cost_entries",
+      "rows": 0,
+      "seed_matches_current": true
+    },
+    {
+      "table": "equipment_site_movements",
+      "rows": 0,
+      "seed_matches_current": true
+    },
+    {
+      "table": "execution_budget_details",
+      "rows": 7,
+      "seed_matches_current": true
+    },
+    {
+      "table": "execution_budgets",
+      "rows": 2,
+      "seed_matches_current": true
+    },
+    {
+      "table": "progress_assessments",
+      "rows": 0,
+      "seed_matches_current": true
+    },
+    {
+      "table": "project_branches",
+      "rows": 2,
+      "seed_matches_current": true
+    },
+    {
+      "table": "project_masters",
+      "rows": 1,
+      "seed_matches_current": true
+    },
+    {
+      "table": "quick_item_templates",
+      "rows": 5,
+      "seed_matches_current": true
+    },
+    {
+      "table": "site_daily_reports",
+      "rows": 0,
+      "seed_matches_current": true
+    },
+    {
+      "table": "subcontract_orders",
+      "rows": 2,
+      "seed_matches_current": true
+    },
+    {
+      "table": "work_types",
+      "rows": 6,
+      "seed_matches_current": true
+    }
+  ],
+  "image_build_from_source_passed": true,
+  "build_cache_was_cleared": false,
+  "powershell_startup_on_empty_env_and_db_passed": true,
+  "posix_entrypoint_fixtures": {
+    "count": 5,
+    "docker_and_curl_mocked": true,
+    "checks": [
+      "fresh-env-random-secret-permissions-cwd-build-readiness",
+      "existing-env-crlf-override-no-build",
+      "compose-failure-propagated",
+      "invalid-option-before-mutation",
+      "readiness-deadline-failure"
+    ]
+  },
+  "fresh_windows_checkout_sh_is_lf": true,
+  "fresh_windows_checkout_anchor_hashes": "4/4",
+  "built_html_and_js_served": true,
+  "initial_branches": 2,
+  "initial_actual_cost": 0,
+  "registration_http_status": 201,
+  "registered_actual_cost": 101,
+  "restart_values_unchanged": true,
+  "original_runtime_restored_with_unchanged_data": true,
+  "physical_other_pc_verified": false,
+  "real_linux_macos_start_to_finish_verified": false,
+  "fresh_browser_interaction_suite_rerun": false,
+  "historical_acceptance_files_overwritten": false
+}
