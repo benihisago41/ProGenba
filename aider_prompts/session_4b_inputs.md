@@ -49,3 +49,4 @@ Read-Onlyで提供された `CONVENTIONS.md` および `frontend/src/bindings.ts
 ## 今回の分割担当 Session4B（最優先）
 編集はEasyCostInput.tsxとCockpitView.tsxの2ファイルだけ。App.tsxやアンカーは変更しない。既存外注・材料経費フォームと共通マスタ/props契約/送信再入防止を維持し、出面と資機材のフォーム/送信を追加して4方式を完成させる。EasyCostInputの新規コードは不要な反復をせず既存ヘルパーを使う。
 CockpitView.tsxでは工事全体合算など金額Decimal.toNumber変換を安全にする。整数かつNumber.MAX_SAFE_INTEGER以内を確認する共通ヘルパーで金額変換し、上限超過時は計算値を丸めず、日本語のrole=alertメッセージを表示して枝番単体表示へ案内する。比率バー用0〜100のtoNumberはそのままでよい。コンポーネント外で例外を投げたまま白画面にせず、集計箇所で捕捉する。業務金額をJavaScriptの通常の算術で計算しない。既存表示・スタイルは維持。
+- 合算上限エラー時も枝番切替操作を残すか、「本工事を表示」ボタンでselectedBranchKeyを有効な枝番へ戻せるようにし、ユーザーをエラー画面に閉じ込めない。

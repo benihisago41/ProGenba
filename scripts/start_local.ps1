@@ -13,4 +13,22 @@ $composeArgs=@('compose','up','-d','--wait')
 if (!$NoBuild) { $composeArgs+='--build' }
 & docker @composeArgs
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-Write-Host '起動しました。.envが既定設定の場合: http://127.0.0.1:8080'
+$taskSettings=@{APP_BIND_ADDRESS='127.0.0.1';APP_PORT='8080'}
+foreach($line in (Get-Content -LiteralPath .env -Encoding utf8)) {
+    if($line -match '^(APP_BIND_ADDRESS|APP_PORT)=(.*)$') { $taskSettings[$Matches[1]]=$Matches[2].Trim() }
+}
+foreach($key in @('APP_BIND_ADDRESS','APP_PORT')) {
+    $value=[Environment]::GetEnvironmentVariable($key)
+    if($value) { $taskSettings[$key]=$value }
+}
+$taskAddress=$taskSettings.APP_BIND_ADDRESS
+if($taskAddress -eq '0.0.0.0') { $taskAddress='127.0.0.1' }
+$taskUrl="http://${taskAddress}:$($taskSettings.APP_PORT)"
+$taskReady=$false
+$taskTimer=[Diagnostics.Stopwatch]::StartNew()
+while($taskTimer.Elapsed.TotalSeconds -lt 45) {
+    try { $null=Invoke-RestMethod "$taskUrl/api/v1/health" -TimeoutSec 2; $taskReady=$true; break }
+    catch { Start-Sleep -Seconds 2 }
+}
+if(!$taskReady) { throw 'アプリの稼働確認がタイムアウトしました。docker compose logs app を確認してください。' }
+Write-Host "起動しました: $taskUrl"

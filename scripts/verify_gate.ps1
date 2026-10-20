@@ -52,6 +52,10 @@ if ($violations.Count -eq 0 -and $Session -eq 3) {
         if ($LASTEXITCODE -ne 0) { $violations.Add('[COCKPIT_BROWSER_FAILED] 実API画面試験失敗') }
     }
 }
+if ($violations.Count -eq 0 -and $Session -eq 4) {
+    & node frontend/tests/acceptance.mjs
+    if ($LASTEXITCODE -ne 0) { $violations.Add('[BROWSER_ACCEPTANCE_FAILED] 4入力方式の画面受入試験失敗') }
+}
 if ($violations.Count -eq 0 -and $Session -eq 5) {
     & docker compose config --quiet
     if ($LASTEXITCODE -ne 0) { $violations.Add('[COMPOSE_CONFIG_FAILED] Compose設定不正') }

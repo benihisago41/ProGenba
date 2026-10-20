@@ -29,3 +29,4 @@ Read-Onlyで提供された `CONVENTIONS.md`, `migrations/001_core_cost_schema.s
 - appのDATABASE_URLは上記dbサービス名・ユーザー・パスワードと一致。portsは ${APP_BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-8080}:8080。検証後に明示設定で社内LANに公開できる。db healthcheckはpg_isready、appはservice_healthyを待機。両方restart unless-stopped。
 - dbのnamed volume pgdataで永続化し、001のDDLを初回だけread-onlyマウントする。アプリ起動毎にシード再投入しない。
 - 現状のmainに未実装のhealthcheckコマンド引数などを想定して追加しない。
+- db healthcheckのpg_isreadyは -h 127.0.0.1 を付け、初期化中の一時Unixソケットサーバーではなく本稼働TCP接続の準備を確認する。

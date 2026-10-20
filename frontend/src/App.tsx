@@ -6,14 +6,11 @@ import {
   ProjectCostCockpitDto,
 } from "./bindings";
 import { CockpitView } from "./CockpitView";
+import { EasyCostInput, EasyCostInputProps } from "./EasyCostInput";
 
 type ActiveTab = "cockpit" | "easy-input";
 
-export interface EasyCostInputProps {
-  projects: ProjectCostCockpitDto[];
-  companyCode: string;
-  onRegistered: () => Promise<void>;
-}
+export type { EasyCostInputProps };
 
 const DEFAULT_COMPANY_CODE = "0000";
 
@@ -38,49 +35,58 @@ export const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const fetchCockpitAndLookups = useCallback(async () => {
-    setIsLoading(true);
-    setErrorMessage(null);
-    try {
-      const query = `?company_code=${encodeURIComponent(companyCode)}`;
-      const [cockpitRes, lookupsRes] = await Promise.all([
-        fetch(`${API_ENDPOINTS.COCKPIT}${query}`, {
-          headers: { Accept: "application/json" },
-        }),
-        fetch(`${API_ENDPOINTS.MASTER_LOOKUPS}${query}`, {
-          headers: { Accept: "application/json" },
-        }),
-      ]);
-
-      if (!cockpitRes.ok) {
-        const msg = await parseApiError(cockpitRes);
-        throw new Error(msg);
+  const fetchCockpitAndLookups = useCallback(
+    async (background = false) => {
+      if (!background) {
+        setIsLoading(true);
+        setErrorMessage(null);
       }
+      try {
+        const query = `?company_code=${encodeURIComponent(companyCode)}`;
+        const [cockpitRes, lookupsRes] = await Promise.all([
+          fetch(`${API_ENDPOINTS.COCKPIT}${query}`, {
+            headers: { Accept: "application/json" },
+          }),
+          fetch(`${API_ENDPOINTS.MASTER_LOOKUPS}${query}`, {
+            headers: { Accept: "application/json" },
+          }),
+        ]);
 
-      const cockpitData = (await cockpitRes.json()) as ProjectCostCockpitDto[];
-      setProjects(Array.isArray(cockpitData) ? cockpitData : []);
+        if (!cockpitRes.ok) {
+          const msg = await parseApiError(cockpitRes);
+          throw new Error(msg);
+        }
 
-      if (lookupsRes.ok) {
-        const lookupsData = (await lookupsRes.json()) as LookupsDto;
-        setLookups(lookupsData);
+        const cockpitData = (await cockpitRes.json()) as ProjectCostCockpitDto[];
+        setProjects(Array.isArray(cockpitData) ? cockpitData : []);
+
+        if (lookupsRes.ok) {
+          const lookupsData = (await lookupsRes.json()) as LookupsDto;
+          setLookups(lookupsData);
+        }
+      } catch (err) {
+        if (!background) {
+          const msg =
+            err instanceof Error
+              ? err.message
+              : "工事原価データの取得中に予期しないエラーが発生しました。";
+          setErrorMessage(msg);
+        }
+      } finally {
+        if (!background) {
+          setIsLoading(false);
+        }
       }
-    } catch (err) {
-      const msg =
-        err instanceof Error
-          ? err.message
-          : "工事原価データの取得中に予期しないエラーが発生しました。";
-      setErrorMessage(msg);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [companyCode]);
+    },
+    [companyCode]
+  );
 
   useEffect(() => {
-    void fetchCockpitAndLookups();
+    void fetchCockpitAndLookups(false);
   }, [fetchCockpitAndLookups]);
 
   const handleRegistered = useCallback(async () => {
-    await fetchCockpitAndLookups();
+    await fetchCockpitAndLookups(true);
   }, [fetchCockpitAndLookups]);
 
   return (
@@ -191,40 +197,11 @@ export const App: React.FC = () => {
         ) : activeTab === "cockpit" ? (
           <CockpitView projects={projects} />
         ) : (
-          <section
-            className="card"
-            aria-label="かんたん原価登録（外注出来高・材料・日報・損料）"
-          >
-            <div className="section-header">
-              <div>
-                <h2 className="section-title">
-                  ➕ かんたん原価登録（外注出来高・材料・日報・損料）
-                </h2>
-                <p className="section-subtitle">
-                  現場で発生した外注出来高・材料購入・作業日報（出面）・機材損料をかんたんに登録できます（対象工事数:{" "}
-                  {projects.length} 件）
-                </p>
-              </div>
-              <div style={{ display: "flex", gap: "8px" }}>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => {
-                    void handleRegistered();
-                  }}
-                >
-                  🔄 原価データを再取得
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  onClick={() => setActiveTab("cockpit")}
-                >
-                  📊 工事原価コックピットへ戻る
-                </button>
-              </div>
-            </div>
-          </section>
+          <EasyCostInput
+            projects={projects}
+            companyCode={companyCode}
+            onRegistered={handleRegistered}
+          />
         )}
       </main>
     </div>

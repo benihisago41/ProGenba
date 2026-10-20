@@ -12,6 +12,22 @@ export interface CockpitViewProps {
 }
 
 const ALL_BRANCHES_KEY = "__ALL__";
+const MAX_SAFE_YEN_DEC = new Decimal(Number.MAX_SAFE_INTEGER);
+
+function toSafeYenNumber(dec: Decimal, label: string): number {
+  if (!dec.isInteger() || dec.abs().greaterThan(MAX_SAFE_YEN_DEC)) {
+    throw new Error(
+      `${label}の合算金額が表示可能な安全整数上限を超えました。各工事枝番（本工事・追加工事）を個別に選択して確認してください。`
+    );
+  }
+  const num = dec.toNumber();
+  if (!Number.isSafeInteger(num)) {
+    throw new Error(
+      `${label}の合算金額が表示可能な安全整数上限を超えました。各工事枝番（本工事・追加工事）を個別に選択して確認してください。`
+    );
+  }
+  return num;
+}
 
 function formatYen(amount: number): string {
   const dec = new Decimal(amount);
@@ -219,10 +235,10 @@ function buildAllBranchesViewData(
     .map((item) => ({
       work_type_code: item.work_type_code,
       work_type_name: item.work_type_name,
-      budget_amount: item.budget.toNumber(),
-      ordered_amount: item.ordered.toNumber(),
-      actual_cost: item.actual.toNumber(),
-      remaining_budget: item.remaining.toNumber(),
+      budget_amount: toSafeYenNumber(item.budget, "工種別実行予算額"),
+      ordered_amount: toSafeYenNumber(item.ordered, "工種別発注済額"),
+      actual_cost: toSafeYenNumber(item.actual, "工種別実際発生原価"),
+      remaining_budget: toSafeYenNumber(item.remaining, "工種別予算残高"),
       consumption_rate_percent: calcRatePercent(item.actual, item.budget),
     }));
 
@@ -242,22 +258,22 @@ function buildAllBranchesViewData(
     branchTitle: `全枝番合算（工事全体：全${branches.length}枝番）`,
     completionStatus: representativeStatus,
     budgetRevLabel: `全${branches.length}枝番合算`,
-    contractAmountTaxEx: contractDec.toNumber(),
-    executionBudgetAmount: budgetDec.toNumber(),
-    orderedCommittedAmount: orderedDec.toNumber(),
-    actualOccurredCost: actualDec.toNumber(),
-    forecastFinalCost: forecastCostDec.toNumber(),
-    forecastGrossProfit: forecastProfitDec.toNumber(),
+    contractAmountTaxEx: toSafeYenNumber(contractDec, "請負契約額"),
+    executionBudgetAmount: toSafeYenNumber(budgetDec, "実行予算額"),
+    orderedCommittedAmount: toSafeYenNumber(orderedDec, "発注・確定済額"),
+    actualOccurredCost: toSafeYenNumber(actualDec, "実際発生原価"),
+    forecastFinalCost: toSafeYenNumber(forecastCostDec, "着地予想原価"),
+    forecastGrossProfit: toSafeYenNumber(forecastProfitDec, "見込粗利額"),
     forecastProfitRate,
     isBudgetExceeded: combinedBudgetExceeded,
     requiresSupervisingEngineerWarning: anyEngineerWarning,
     actualBreakdown: {
-      material_cost: matDec.toNumber(),
-      labor_cost: labDec.toNumber(),
-      subcontract_cost: subDec.toNumber(),
-      expense_cost: expDec.toNumber(),
-      equipment_cost: eqpDec.toNumber(),
-      total_cost: totalBreakdownDec.toNumber(),
+      material_cost: toSafeYenNumber(matDec, "材料費"),
+      labor_cost: toSafeYenNumber(labDec, "労務費"),
+      subcontract_cost: toSafeYenNumber(subDec, "外注費"),
+      expense_cost: toSafeYenNumber(expDec, "現場経費"),
+      equipment_cost: toSafeYenNumber(eqpDec, "機械損料"),
+      total_cost: toSafeYenNumber(totalBreakdownDec, "原価5要素合計"),
     },
     byWorkType: aggregatedWorkTypes,
   };
@@ -342,25 +358,215 @@ export const CockpitView: React.FC<CockpitViewProps> = ({ projects }) => {
     }
   }, [currentProjectGroup, selectedBranchKey]);
 
-  const activeData = useMemo<AggregatedCockpitViewData | null>(() => {
-    if (!currentProjectGroup) return null;
-    if (selectedBranchKey === ALL_BRANCHES_KEY) {
-      return buildAllBranchesViewData(currentProjectGroup.branches);
+  const activeResult = useMemo<{
+    data: AggregatedCockpitViewData | null;
+    error: string | null;
+  }>(() => {
+    if (!currentProjectGroup) return { data: null, error: null };
+    try {
+      if (selectedBranchKey === ALL_BRANCHES_KEY) {
+        return {
+          data: buildAllBranchesViewData(currentProjectGroup.branches),
+          error: null,
+        };
+      }
+      const targetBranch =
+        currentProjectGroup.branches.find(
+          (b) => b.key.branch_code === selectedBranchKey
+        ) ?? currentProjectGroup.branches[0];
+      if (!targetBranch) return { data: null, error: null };
+      return { data: buildSingleViewData(targetBranch), error: null };
+    } catch (err) {
+      return {
+        data: null,
+        error:
+          err instanceof Error
+            ? err.message
+            : "合算金額が安全に表示できる上限を超えたため表示できません。枝番単体を選択してください。",
+      };
     }
-    const targetBranch =
-      currentProjectGroup.branches.find(
-        (b) => b.key.branch_code === selectedBranchKey
-      ) ?? currentProjectGroup.branches[0];
-    if (!targetBranch) return null;
-    return buildSingleViewData(targetBranch);
   }, [currentProjectGroup, selectedBranchKey]);
 
-  if (!currentProjectGroup || !activeData) {
+  const workTypeTotalsResult = useMemo<{
+    totals: {
+      budget: number;
+      ordered: number;
+      actual: number;
+      remaining: number;
+      rate: string;
+    } | null;
+    error: string | null;
+  }>(() => {
+    const activeData = activeResult.data;
+    if (!activeData) return { totals: null, error: null };
+    try {
+      let budget = new Decimal(0);
+      let ordered = new Decimal(0);
+      let actual = new Decimal(0);
+      let remaining = new Decimal(0);
+      for (const r of activeData.byWorkType) {
+        budget = budget.plus(r.budget_amount);
+        ordered = ordered.plus(r.ordered_amount);
+        actual = actual.plus(r.actual_cost);
+        remaining = remaining.plus(r.remaining_budget);
+      }
+      const rate = calcRatePercent(actual, budget);
+      return {
+        totals: {
+          budget: toSafeYenNumber(budget, "工種合計（実行予算額）"),
+          ordered: toSafeYenNumber(ordered, "工種合計（発注済額）"),
+          actual: toSafeYenNumber(actual, "工種合計（実際発生原価）"),
+          remaining: toSafeYenNumber(remaining, "工種合計（予算残高）"),
+          rate,
+        },
+        error: null,
+      };
+    } catch (err) {
+      return {
+        totals: null,
+        error:
+          err instanceof Error
+            ? err.message
+            : "工種合計金額が安全に表示できる上限を超えました。",
+      };
+    }
+  }, [activeResult.data]);
+
+  if (!currentProjectGroup) {
     return (
       <div className="card state-box" role="status">
         <p style={{ margin: 0, fontWeight: 700 }}>
           表示可能な工事原価データがありません。
         </p>
+      </div>
+    );
+  }
+
+  const fallbackBranch =
+    currentProjectGroup.branches.find((b) => b.key.branch_code === "000") ??
+    currentProjectGroup.branches[0];
+
+  const aggregationError = activeResult.error ?? workTypeTotalsResult.error;
+  const activeData = activeResult.data;
+  const workTypeTotals = workTypeTotalsResult.totals;
+
+  if (aggregationError || !activeData || !workTypeTotals) {
+    return (
+      <div>
+        <section className="card" aria-label="対象工事および工事枝番の選択">
+          <div className="section-header">
+            <div>
+              <h2 className="section-title">
+                <span>🏗️ 対象工事・枝番の選択</span>
+              </h2>
+              <p className="section-subtitle">
+                本工事・追加工事の単体状況、または全枝番合算（工事全体）の原価・粗利をワンクリックで切り替えられます
+              </p>
+            </div>
+          </div>
+
+          <div className="selector-grid">
+            <div className="form-field">
+              <label htmlFor="cockpit-project-select" className="form-label">
+                工事名を選択
+              </label>
+              <select
+                id="cockpit-project-select"
+                className="form-select"
+                value={currentProjectGroup.projectCode}
+                onChange={(e) => {
+                  const nextCode = e.target.value;
+                  setSelectedProjectCode(nextCode);
+                  const nextGroup = projectGroups.find(
+                    (g) => g.projectCode === nextCode
+                  );
+                  const defaultBranch =
+                    nextGroup?.branches.find(
+                      (b) => b.key.branch_code === "000"
+                    ) ?? nextGroup?.branches[0];
+                  setSelectedBranchKey(
+                    defaultBranch ? defaultBranch.key.branch_code : "000"
+                  );
+                }}
+              >
+                {projectGroups.map((group) => (
+                  <option key={group.projectCode} value={group.projectCode}>
+                    {group.projectName}（工事番号: {group.projectCode} / 全
+                    {group.branches.length}枝番）
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-field">
+              <span className="form-label" id="branch-tabs-label">
+                工事枝番・集計単位の切り替え
+              </span>
+              <div
+                className="branch-tabs"
+                role="tablist"
+                aria-labelledby="branch-tabs-label"
+              >
+                {currentProjectGroup.branches.map((b) => {
+                  const isSelected =
+                    selectedBranchKey !== ALL_BRANCHES_KEY &&
+                    b.key.branch_code === selectedBranchKey;
+                  const labelText = getBranchDisplayLabel(
+                    b.key.branch_code,
+                    b.branch_name
+                  );
+                  return (
+                    <button
+                      key={b.key.branch_code}
+                      type="button"
+                      role="tab"
+                      aria-selected={isSelected}
+                      className={`branch-tab-btn ${isSelected ? "active" : ""}`}
+                      onClick={() => setSelectedBranchKey(b.key.branch_code)}
+                    >
+                      {labelText}
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={selectedBranchKey === ALL_BRANCHES_KEY}
+                  className={`branch-tab-btn ${
+                    selectedBranchKey === ALL_BRANCHES_KEY ? "active" : ""
+                  }`}
+                  onClick={() => setSelectedBranchKey(ALL_BRANCHES_KEY)}
+                >
+                  📊 全枝番合算（工事全体）
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="card state-box" role="alert">
+          <div
+            className="alert-banner alert-danger"
+            style={{ justifyContent: "center", marginBottom: "16px" }}
+          >
+            <span>
+              ⚠️{" "}
+              {aggregationError ??
+                "表示可能な工事原価データがありません。各枝番を個別に選択してください。"}
+            </span>
+          </div>
+          {fallbackBranch && (
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() =>
+                setSelectedBranchKey(fallbackBranch.key.branch_code)
+              }
+            >
+              本工事を表示（枝番単体表示へ戻る）
+            </button>
+          )}
+        </section>
       </div>
     );
   }
@@ -432,27 +638,6 @@ export const CockpitView: React.FC<CockpitViewProps> = ({ projects }) => {
       ),
     },
   ];
-
-  const workTypeTotals = useMemo(() => {
-    let budget = new Decimal(0);
-    let ordered = new Decimal(0);
-    let actual = new Decimal(0);
-    let remaining = new Decimal(0);
-    for (const r of activeData.byWorkType) {
-      budget = budget.plus(r.budget_amount);
-      ordered = ordered.plus(r.ordered_amount);
-      actual = actual.plus(r.actual_cost);
-      remaining = remaining.plus(r.remaining_budget);
-    }
-    const rate = calcRatePercent(actual, budget);
-    return {
-      budget: budget.toNumber(),
-      ordered: ordered.toNumber(),
-      actual: actual.toNumber(),
-      remaining: remaining.toNumber(),
-      rate,
-    };
-  }, [activeData.byWorkType]);
 
   return (
     <div>
@@ -603,7 +788,15 @@ export const CockpitView: React.FC<CockpitViewProps> = ({ projects }) => {
           <div className="kpi-subtext">
             <span>実発生ベースの予算残</span>
             <span className={budgetRemainingDec.isNegative() ? "text-danger" : ""}>
-              {formatYen(budgetRemainingDec.toNumber())}
+              {(() => {
+                try {
+                  return formatYen(
+                    toSafeYenNumber(budgetRemainingDec, "予算残")
+                  );
+                } catch {
+                  return "上限超過";
+                }
+              })()}
             </span>
           </div>
         </article>
