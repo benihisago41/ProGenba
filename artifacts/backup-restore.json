@@ -1,0 +1,62 @@
+{
+  "passed": true,
+  "checked_at": "2026-10-20T23:01:45Z",
+  "source_commit": "5eac822",
+  "environment": "Windows 11 Pro 10.0.26300, Docker Desktop 29.8.2 Linux containers, postgres:16-alpine; the PC verified in fresh-start.json physical_other_pc_verification",
+  "decisions": {
+    "owner": "developer (sole person during test phase)",
+    "method": "pg_dump -Fc",
+    "storage": "%OneDrive%\\ProGenba-backups (outside repository)",
+    "frequency_and_rpo": "manual or daily, RPO 24h",
+    "retention_generations": 7,
+    "rto": "measured only, no target during test phase"
+  },
+  "source_data": "fresh-start seed plus one verification direct cost entry (37000)",
+  "backup": {
+    "dump_bytes": 45759,
+    "dump_sha256": "555f72c571959501ea33eda1db31c7dcb147fe8b2bbcdfc9e9a53328f0565cd8",
+    "seconds": 1.8,
+    "live_database_written": false
+  },
+  "restore": {
+    "target": "new isolated container, volume and network labeled progenba.restore-test=true",
+    "restore_seconds_from_empty_db_creation": 4.7,
+    "tables_compared": 14,
+    "table_rows": {
+      "business_partners": 6,
+      "construction_equipment_masters": 2,
+      "cost_elements": 5,
+      "direct_cost_entries": 1,
+      "equipment_site_movements": 0,
+      "execution_budget_details": 7,
+      "execution_budgets": 2,
+      "progress_assessments": 0,
+      "project_branches": 2,
+      "project_masters": 1,
+      "quick_item_templates": 5,
+      "site_daily_reports": 0,
+      "subcontract_orders": 2,
+      "work_types": 6
+    },
+    "all_row_digests_identical": true,
+    "schema_objects_compared": 82,
+    "schema_objects_identical": true,
+    "cockpit_companies_compared": ["0000"],
+    "cockpit_api_responses_identical": true,
+    "cockpit_actual_cost_total": 37000,
+    "restore_assets_removed_after_check": true
+  },
+  "negative_checks": {
+    "tampered_sha256_rejected_before_restore": true,
+    "modified_restored_amount_detected_as_diff": true,
+    "backup_into_repository_rejected": true,
+    "generation_pruning_keeps_latest_only_with_keep_1": true
+  },
+  "not_performed": [
+    "replacing the live database with a dump (procedure documented only)",
+    "scheduled daily backup registration",
+    "restore on a different PC from the OneDrive copy",
+    "multi-company data (only company 0000 exists in the seed)"
+  ],
+  "other_containers_or_volumes_modified": false
+}
