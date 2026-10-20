@@ -33,6 +33,10 @@ if ($violations.Count -eq 0 -and $Session -in @(1,2)) {
     & "$PSScriptRoot/test_backend.ps1"
     if ($LASTEXITCODE -ne 0) { $violations.Add('[CARGO_TEST_FAILED] Rust試験失敗') }
 }
+if ($violations.Count -eq 0 -and $Session -eq 2) {
+    & "$PSScriptRoot/test_backend_api.ps1"
+    if ($LASTEXITCODE -ne 0) { $violations.Add('[API_ACCEPTANCE_FAILED] 実DBを用いたAPI受入試験失敗') }
+}
 if ($violations.Count -eq 0 -and $Session -in @(3,4)) {
     Push-Location frontend
     try {

@@ -15,3 +15,27 @@
 - 実行中シェル: 16202（Docker image pull→依存解決→Rust契約試験）。専用DB: progenba-codex-phase0-db（ポート非公開、ai.agent=codex）。
 - 未コミット: Phase0アンカー3点、規約補足、検証スクリプト、契約試験、Aider起動wrapper等。
 - 次: 契約試験を合格させる→アンカーハッシュ固定・Phase0コミット→Session1。
+
+## Session 1完了 / Session 2実行中
+- Phase 0合格: PostgreSQL初期化・DB制約6項目、Rust1.80 JSON契約1件、TS型検査。コミット5c976ff。
+- Session1合格: calc単体7件+JSON契約1件、Gate1 exit0。コミットd6d5e93。アンカー4点ハッシュ固定済み。
+- Rust互換lockはCargo1.85 fallback生成後url2.5.2/idna0.5.0へ固定。アプリのビルド・試験はRust1.80を維持。
+- Aider実行中: shell session31701、session2（api/mod.rs/projects.rs/actual_costs.rs/main.rsの4ファイルのみ）。前回の要約終了時警告を避けるため履歴上限100000を指定。
+- 独立作業: API受入test_api.mjs、実行用test_backend_api.ps1、監査Gate2連携、.dockerignore/.env.exampleを用意。frontendにplaywrightをdev依存追加（Chrome既存実行ファイル利用、グローバル追加なし）。
+- Phase0 DB: progenba-codex-phase0-db（ポート非公開）。他者openhands-appは変更禁止。
+- 次: Session2終了・全4ファイル差分レビュー→Gate2（Rust試験、専用API起動、実DB受入、停止）→Session3a/3b。Gate2で初めてAPI受入を実行する。
+
+## Session2の分割
+- 最初のSession2は出力上限（約17530token）で打切り。4ファイルとも空で、変更適用なし。盲目的な再実行をせず2A/2B/2Cへ分割。
+- 実行中shell95153: Session2A（api/mod.rsとprojects.rsだけ）。終了後2Bでactual_costs.rsの共通処理+査定、2Cで残り登録+main。
+- 2A/2B/2Cのプロンプトはaider_prompts/session_2a_queries.md,session_2b_assessment.md,session_2c_entries.md。元Session2仕様全文+担当制限を渡す。
+- Phase2全体のGateは3分割終了後。各起動は新規履歴、max-chat-history-tokens=100000。
+- Chrome自動ブラウザー環境の小試験は合格（375px viewport）。実画面試験は未実行。
+
+## Session2C実行中
+- 2A/2BはAider exit0。mod.rs/projects.rs（取得API）とactual_costs.rs（共通処理+査定）生成済み。アンカーは未変更。
+- レビューで見つかった構文誤記 ensure_decimal_ fits_yen、外注ロール確認不足、年月の過剰な範囲制限、lookups削除済み除外不足を2Cの修正指示へ追加。
+- 実行中shell89466: 2C（actual_costs.rs/projects.rs/main.rsの3ファイル）。2Bのshell99492は完了。
+- 次: 2C終了→全差分レビュー→scripts/verify_gate.ps1 -Session 2。Gate2はRust8試験→test_backend_api.ps1→test_api.mjsの実DB試験→専用API停止を実行。
+- user質問への回答済み: Aider主モデルvertex_ai/gemini-4-argon、補助vertex_ai/gemini-3.8-flash（既存設定）。モデル変更なし。
+- 既存progenba compose/pgdataはなし（確認済み）。npm playwright追加済み、既存Chromeの小試験は合格。

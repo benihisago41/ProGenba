@@ -1,0 +1,10 @@
+.git
+**/target
+**/node_modules
+**/dist
+.env
+artifacts
+.aider*
+01_DotNet_Assemblies_and_Decompiled
+02_InstallShield_Decrypted_and_Scripts
+03_Analysis_Tools_and_Scripts

@@ -10,6 +10,7 @@ assert.equal(label, 'codex', '専用の検証DBだけを対象にしてくださ
 const db = sql => execFileSync('docker', ['exec','-i',container,'psql','-X','-U',dbUser,'-d','sirius_reborn','-At','-v','ON_ERROR_STOP=1'], {input:sql,encoding:'utf8'}).trim();
 const tests = [];
 const documents = [];
+const tenantTables=['business_partners','work_types','cost_elements','quick_item_templates','project_masters','project_branches','execution_budgets','execution_budget_details','subcontract_orders','construction_equipment_masters'];
 async function request(path, body, expected=200) {
   const response = await fetch(base+path, body === undefined ? undefined : {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
   const data = await response.json();
@@ -28,7 +29,7 @@ async function register(kind, body) {
   const r=await request('/api/v1/costs/'+kind,body,201);
   const table={'subcontract-progress':'progress_assessments','direct-entry':'direct_cost_entries','daily-report':'site_daily_reports','equipment-movement':'equipment_site_movements'}[kind];
   const col={'subcontract-progress':'assessment_no','direct-entry':'entry_no','daily-report':'report_no','equipment-movement':'movement_slip_no'}[kind];
-  documents.push({table,col,no:r.document_no}); return r;
+  documents.push({table,col,no:r.document_no,company:body.company_code}); return r;
 }
 try {
   await check('readiness-and-json-contract',async()=>{
@@ -75,6 +76,8 @@ try {
       await request('/api/v1/costs/direct-entry',{...cost,branch_code},422);
       await request('/api/v1/costs/daily-report',{...report,branch_code},422);
       await request('/api/v1/costs/equipment-movement',{...equip,dest_branch_code:branch_code},422);
+      db(`INSERT INTO subcontract_orders SELECT (jsonb_populate_record(NULL::subcontract_orders,to_jsonb(o)||jsonb_build_object('order_number','QA-LOCK-${branch_code}','branch_code','${branch_code}'))).* FROM subcontract_orders o WHERE company_code='0000' AND order_number='ORD-2026-002' AND order_history_no=0;`);
+      await request('/api/v1/costs/subcontract-progress',{...progress,order_number:`QA-LOCK-${branch_code}`},422);
     }
     const r=await register('direct-entry',{...cost,branch_code:'990'}); assert.ok(r.warnings.length>0);
     const late=await register('direct-entry',{...cost,occurred_date:'2027-01-01'}); assert.ok(late.warnings.length>0);
@@ -99,6 +102,13 @@ try {
     const x=await main(); assert.equal(x.latest_budget_history_no,2); assert.equal(x.execution_budget_amount,38001000);
     assert.equal(x.by_work_type.reduce((sum,r)=>sum+r.budget_amount,0),38001000);
   });
+  await check('two-existing-companies-with-identical-business-codes-remain-isolated',async()=>{
+    for(const table of tenantTables) db(`INSERT INTO ${table} SELECT (jsonb_populate_record(NULL::${table},to_jsonb(t)||'{"company_code":"9001"}'::jsonb)).* FROM ${table} t WHERE company_code='0000';`);
+    const before=await main(); await register('direct-entry',{...cost,company_code:'9001'});
+    const other=(await request('/api/v1/cockpit?company_code=9001&branch_code=000'))[0];
+    assert.equal(other.actual_occurred_cost,101); assert.equal(other.actual_breakdown.subcontract_cost,0);
+    assert.equal((await main()).actual_occurred_cost,before.actual_occurred_cost);
+  });
   db(`CREATE FUNCTION codex_test_reject_insert() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION '受入試験の意図的失敗'; END $$;
       CREATE TRIGGER codex_test_reject BEFORE INSERT ON direct_cost_entries FOR EACH ROW EXECUTE FUNCTION codex_test_reject_insert();`);
   await check('insert-failure-rolls-back',async()=>{
@@ -110,6 +120,7 @@ try {
   writeFileSync('artifacts/acceptance-api.json',JSON.stringify({passed:false,tests,error:String(error)},null,2)); throw error;
 } finally {
   db('DROP TRIGGER IF EXISTS codex_test_reject ON direct_cost_entries; DROP FUNCTION IF EXISTS codex_test_reject_insert();');
-  for(const {table,col,no} of documents.reverse()) db(`DELETE FROM ${table} WHERE company_code='0000' AND ${col}='${no}';`);
-  db("DELETE FROM subcontract_orders WHERE company_code='0000' AND order_number='ORD-2026-001' AND order_history_no IN (1,2); DELETE FROM execution_budget_details WHERE company_code='0000' AND project_code='PRJ-2026-A' AND branch_code='000' AND budget_history_no=2; DELETE FROM execution_budgets WHERE company_code='0000' AND project_code='PRJ-2026-A' AND branch_code='000' AND budget_history_no IN (1,2); DELETE FROM project_branches WHERE company_code='0000' AND project_code='PRJ-2026-A' AND branch_code IN ('990','991','992');");
+  for(const {table,col,no,company} of documents.reverse()) db(`DELETE FROM ${table} WHERE company_code='${company}' AND ${col}='${no}';`);
+  for(const table of [...tenantTables].reverse()) db(`DELETE FROM ${table} WHERE company_code='9001';`);
+  db("DELETE FROM subcontract_orders WHERE company_code='0000' AND (order_number LIKE 'QA-LOCK-%' OR (order_number='ORD-2026-001' AND order_history_no IN (1,2))); DELETE FROM execution_budget_details WHERE company_code='0000' AND project_code='PRJ-2026-A' AND branch_code='000' AND budget_history_no=2; DELETE FROM execution_budgets WHERE company_code='0000' AND project_code='PRJ-2026-A' AND branch_code='000' AND budget_history_no IN (1,2); DELETE FROM project_branches WHERE company_code='0000' AND project_code='PRJ-2026-A' AND branch_code IN ('990','991','992');");
 }
