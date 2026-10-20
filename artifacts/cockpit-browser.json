@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "base": "http://127.0.0.1:8080",
+  "checks": [
+    "real-api-project",
+    "contract-amount",
+    "actual-cost-label",
+    "no-page-errors"
+  ],
+  "screenshot": "artifacts/browser/cockpit-desktop.png"
+}

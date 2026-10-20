@@ -44,6 +44,14 @@ if ($violations.Count -eq 0 -and $Session -in @(3,4)) {
         if ($LASTEXITCODE -ne 0) { $violations.Add('[TS_BUILD_FAILED] 型検査またはビルド失敗') }
     } finally { Pop-Location }
 }
+if ($violations.Count -eq 0 -and $Session -eq 3) {
+    & "$PSScriptRoot/preview.ps1"
+    if ($LASTEXITCODE -ne 0) { $violations.Add('[PREVIEW_FAILED] 実APIプレビュー起動失敗') }
+    else {
+        & node frontend/tests/cockpit.mjs
+        if ($LASTEXITCODE -ne 0) { $violations.Add('[COCKPIT_BROWSER_FAILED] 実API画面試験失敗') }
+    }
+}
 if ($violations.Count -eq 0 -and $Session -eq 5) {
     & docker compose config --quiet
     if ($LASTEXITCODE -ne 0) { $violations.Add('[COMPOSE_CONFIG_FAILED] Compose設定不正') }

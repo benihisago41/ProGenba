@@ -18,7 +18,7 @@ $aiderArgs = @(
     '--no-auto-commits', '--no-dirty-commits', '--no-gitignore',
     '--no-auto-lint', '--no-auto-test', '--no-suggest-shell-commands',
     '--no-watch-files', '--no-restore-chat-history', '--no-check-update',
-    '--no-show-release-notes', '--no-analytics', '--no-pretty', '--no-stream',
+    '--no-show-release-notes', '--no-analytics', '--no-pretty', '--no-stream', '--no-detect-urls',
     '--chat-language', 'Japanese', '--map-tokens', '0', '--max-chat-history-tokens', '100000',
     '--input-history-file', (Join-Path $run 'input.history'),
     '--chat-history-file', (Join-Path $run 'chat.history.md')

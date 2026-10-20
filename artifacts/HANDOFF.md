@@ -39,3 +39,11 @@
 - 次: 2C終了→全差分レビュー→scripts/verify_gate.ps1 -Session 2。Gate2はRust8試験→test_backend_api.ps1→test_api.mjsの実DB試験→専用API停止を実行。
 - user質問への回答済み: Aider主モデルvertex_ai/gemini-4-argon、補助vertex_ai/gemini-3.8-flash（既存設定）。モデル変更なし。
 - 既存progenba compose/pgdataはなし（確認済み）。npm playwright追加済み、既存Chromeの小試験は合格。
+
+## Session2合格 / Session3開始
+- 2C後にmain.rsのEnvFilter feature不一致を検出。Aider限定修復で既存tracing_subscriber::fmt初期化へ変更。依存・アンカー変更なし。
+- Gate2 exit0: Rust7+JSON契約1、実DB API受入10項目すべて合格。二社同一コード分離、最新承認履歴、同時査定、完成4API、途中失敗rollback等。専用APIコンテナは停止・削除済み。コミット5f0eda5。
+- Session3A shell20298実行中（index.html/vite.config.ts/main.tsxの3点）。終了後App.tsx/CockpitView.tsxを作成してSession3B。
+- Gate3はnpm build後、preview.ps1で専用Rust API+distを8080公開→frontend/tests/cockpit.mjsでChrome実API表示・スクリーンショット。プレビューはSession4まで利用し、Session5前に停止。
+- Aiderの自動URL取得がプロンプト中localhostへアクセスしたため、次回から--no-detect-urlsを設定。
+- 元資産37/37無変更はartifacts/source-preservation.jsonで確認済み。
