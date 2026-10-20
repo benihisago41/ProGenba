@@ -7,4 +7,5 @@ frontend/dist/
 !.aider.conf.yml
 artifacts/runs/
 artifacts/browser/
+artifacts/closed-worktrees-*/
 *.log

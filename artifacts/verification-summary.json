@@ -3,14 +3,27 @@
   "rust_tests": 8,
   "passed": true,
   "test_data_removed": 8,
-  "retained_worktree": "ProGenba.wt-codex-sirius-reborn",
-  "worktrees_deleted": 0,
+  "scope": "limited-internal-validation",
+  "acceptance_evidence_kind": "preserved-results-from-implementation",
+  "retained_worktree": null,
+  "worktrees_deleted": 1,
   "restart_persistence": true,
   "api_acceptance_scenarios": 10,
-  "branch": "ai/codex/sirius-reborn",
+  "branch": "main",
   "browser_acceptance_scenarios": 11,
   "test_harness_isolation": true,
-  "merge_status": "unmerged-local-no-remote",
+  "merge_status": "merged",
+  "repository": "https://github.com/benihisago41/ProGenba",
+  "pull_request": "https://github.com/benihisago41/ProGenba/pull/1",
+  "merged_commit": "ad38e184e90c3e066492e6e8fd6ed7fadf2cd29d",
+  "local_archive": "artifacts/closed-worktrees-2026-10-21/sirius-reborn",
+  "archive_is_published": false,
+  "maintenance": {
+    "branch": "ai/codex/completion-records",
+    "integration_status": "review-pending",
+    "evidence": "artifacts/record-maintenance.json",
+    "next_instructions": "artifacts/NEXT_ACTIONS.md"
+  },
   "gates": [
     1,
     2,
@@ -18,5 +31,19 @@
     4,
     5
   ],
-  "branches_deleted": 0
+  "branches_deleted": 1,
+  "remote_branches_deleted": 1,
+  "not_implemented_in_this_scope": [
+    "authentication-and-authorization",
+    "master-budget-and-order-editing",
+    "confirmed-monthly-wage-entry",
+    "production-data-migration",
+    "backup-restore-operations",
+    "operational-monitoring-and-audit-log"
+  ],
+  "not_verified": [
+    "physical-smartphone",
+    "separate-device-lan-access",
+    "large-scale-and-long-duration-load"
+  ]
 }

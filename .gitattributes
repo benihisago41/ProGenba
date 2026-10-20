@@ -1,0 +1,5 @@
+# アンカーの改行規則
+CONVENTIONS.md text eol=lf
+migrations/001_core_cost_schema.sql text eol=lf
+backend/src/domain/types.rs text eol=lf
+frontend/src/bindings.ts text eol=lf

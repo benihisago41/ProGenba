@@ -11,7 +11,9 @@
 
 ## 作業場所と入力の保全
 
-元フォルダの未追跡資産を変更・移動しません。今回は初回コミット前だったため、独立したorphan worktreeに入力資産を複製して基準を記録しました。入力一覧とハッシュは `artifacts/input-manifest.json`、元資産の保全確認は `artifacts/source-preservation.json` です。mainへのコミット・マージは行いません。
+初回はmainが初回コミット前だったため、独立したorphan worktreeに入力資産を複製して基準を記録しました。入力一覧とハッシュは `artifacts/input-manifest.json`、実装時の保全確認は `artifacts/source-preservation.json` です。
+
+その後、ユーザーの明示承認により公開リポジトリ作成・PR #1のマージまで完了しました。本体をmainへ同期する前に元資料37ファイルをハッシュ照合し、`artifacts/closed-worktrees-2026-10-21/sirius-reborn/original-inputs/` へ保全済みです。今後もmainへ直接コミットせず、作業ブランチ/worktreeを使います。マージはユーザーの承認範囲を確認して行います。
 
 ## Phase 0：契約整備と固定
 
@@ -22,7 +24,7 @@
 - `backend/src/domain/types.rs`
 - `frontend/src/bindings.ts`
 
-基準は `artifacts/anchor-hashes.json`。以降は全て参照専用とし、監査でハッシュを照合します。異常時に `git checkout` で一括復元せず、基準と差分を確認し、管理者が原因を特定してください。
+基準は `artifacts/anchor-hashes.json`。以降は全て参照専用とし、監査でハッシュを照合します。`.gitattributes` で4アンカーの改行をLFに固定しています。記録整備時に改行だけを正規化し、本文の一致を確認してLFの基準ハッシュに統一しました。異常時に一括復元や基準の上書きをせず、管理者が差分と原因を確認してください。
 
 Rust試験はDocker内の1.80で行います。依存は `backend/Cargo.lock`、フロントエンドは `frontend/package-lock.json` を使います。初期の無固定依存ではRust1.80非互換が発生したため、互換性を考慮して解決しurl2.5.2/idna0.5.0を固定済みです。ホストのランタイム・グローバル設定は変更しません。
 
@@ -78,4 +80,4 @@ node scripts/test_persistence.mjs
 
 ## 引き渡し
 
-必須試験に合格したら追加改善で作業を広げません。結果、未対応範囲、未コミット状態、ブランチ・worktree・一時成果物・稼働中コンテナとポートを記録します。未統合のworktreeは保持し、ユーザーによる統合後に取り込みと所有を確認して整理します。秘密は記録しません。
+必須試験に合格したら追加改善で作業を広げません。結果、未対応範囲、未コミット状態、ブランチ・worktree・一時成果物・稼働中コンテナとポートを記録します。未統合のworktreeは保持し、ユーザー承認の下で統合した後に取り込みと所有を確認して整理します。秘密は記録しません。現在の状態は `artifacts/HANDOFF.md`、残作業の指示は `artifacts/NEXT_ACTIONS.md` を参照してください。
