@@ -1,0 +1,150 @@
+[
+  {
+    "path": ".aider.conf.yml",
+    "sha256": "2B77A9D852F054C5CC396FBA7288A18D466EC93633FDEF047EC5050A4AF882FE"
+  },
+  {
+    "path": ".aiderignore",
+    "sha256": "6245F7E1BE26AFF8395E9A8AA5B7B5DDE09DEF74E84DBDD94B2AD267F337C6EE"
+  },
+  {
+    "path": "00_ガリバー・プロステージ_v6.2.0_静的解析レポート.md",
+    "sha256": "2617099CCE7D4F0B68088400E28B7A1E56B997D8708E47D814D4DBDAF1A6DF18"
+  },
+  {
+    "path": "AGENTS.md",
+    "sha256": "C3A1A1464CC70C5DF1137AFEF9519E99E768A11E9C792CE5CF78BE933B543444"
+  },
+  {
+    "path": "CONVENTIONS.md",
+    "sha256": "FE2BA8D0DF6D561BAF61BF8EA18E99662DD520DC25F8EF4BDE7D85B55AF0DC5C"
+  },
+  {
+    "path": "MANAGER_AI_HANDBOOK.md",
+    "sha256": "C9418105CF453A5BD0BD2B36AB0D1F3F8FD1AA39D003D448A601AF00D82D55C1"
+  },
+  {
+    "path": "建設業特有業務データモデル仕様書.md",
+    "sha256": "574AA5FACE61DB6DD01770E8C5A7067A221521C6AD30A8542DA415E7953CBDBE"
+  },
+  {
+    "path": "01_DotNet_Assemblies_and_Decompiled\\Decompiled_Source_and_IL.cs",
+    "sha256": "B2A9C957769E9F4E2F0C650BDBE606403B5F9AFC3D13CA3F634F876E0F614B65"
+  },
+  {
+    "path": "01_DotNet_Assemblies_and_Decompiled\\Sirius_Information_All598Classes.txt",
+    "sha256": "A435D62084ADFC5A3913CB07739EDA4130D16880C469553917F719A5B2B67CB8"
+  },
+  {
+    "path": "01_DotNet_Assemblies_and_Decompiled\\Sirius_Information_AllConstants.csv",
+    "sha256": "D32060926F4D2534946F450BD42B03AE4C38933B94DE97BB0843468949E5169C"
+  },
+  {
+    "path": "01_DotNet_Assemblies_and_Decompiled\\Binaries\\AsakawaSystems.Win.Common.File.dll",
+    "sha256": "24D3DCC6CB72293FC4DE5608998C5E88BF6983739902163285664DE2BEBAD610"
+  },
+  {
+    "path": "01_DotNet_Assemblies_and_Decompiled\\Binaries\\AsakawaSystems.Win.Sirius.Information.dll",
+    "sha256": "F784EA364EF6AF8F0F8E27C6592678F5966E8A7DFF5639A54FD6D4BC23568AE4"
+  },
+  {
+    "path": "01_DotNet_Assemblies_and_Decompiled\\Binaries\\CallInstallBat.exe",
+    "sha256": "353A34EACBB4838980B3992BFB90B7F87E6EC8CEFDA9857829931CE2EE3AA221"
+  },
+  {
+    "path": "01_DotNet_Assemblies_and_Decompiled\\Binaries\\PackageCheck.exe",
+    "sha256": "15CB35C70B921934198482E659541414CF54DF03CC97526888DBA48F39DA316F"
+  },
+  {
+    "path": "02_InstallShield_Decrypted_and_Scripts\\dsn_regist.bat",
+    "sha256": "F4E15B8D88BC602278DEAD86EB8CBC10A98451D4389F8F5CCFE559D9D10FE701"
+  },
+  {
+    "path": "02_InstallShield_Decrypted_and_Scripts\\dsn_regist64.bat",
+    "sha256": "D6D4A87892821778FCAFAD3314DCD6860D34DF1145D0AB69F2E4CBCB05C68825"
+  },
+  {
+    "path": "02_InstallShield_Decrypted_and_Scripts\\GAC_rmtools.ini",
+    "sha256": "440EF086D0EBD685D3ACD3C7AB2231DF23AE319050FF0ECE7EA489A4469B7BEE"
+  },
+  {
+    "path": "02_InstallShield_Decrypted_and_Scripts\\GAC_tools.ini",
+    "sha256": "4D6A1834D630F3313A357E408931787497A0A7495B8F827BC35DB0E0717D1F7E"
+  },
+  {
+    "path": "02_InstallShield_Decrypted_and_Scripts\\setup_decrypted.inx",
+    "sha256": "D499EA3E1B70FEB7B985A450D7466756D5690C5602491BEBB224D9D28CD85570"
+  },
+  {
+    "path": "02_InstallShield_Decrypted_and_Scripts\\Setup_rul_Strings_and_Offsets.txt",
+    "sha256": "8FD1C52007C8CB0F8E8E5A3EE73D2E3AA45B84AD94FA55CE23CCD92EA536D8B0"
+  },
+  {
+    "path": "02_InstallShield_Decrypted_and_Scripts\\setup.ini",
+    "sha256": "4DB95212AA41AF5319ED1EE09F37DC9F3EFAECC82F390E4417BB47B204C18048"
+  },
+  {
+    "path": "03_Analysis_Tools_and_Scripts\\decrypt_inx.py",
+    "sha256": "11D0BCF0C2EEEECA918F8C4F775CB8AEF4389B35B8CE325369C7765B5611D5E8"
+  },
+  {
+    "path": "03_Analysis_Tools_and_Scripts\\dump_setup_rul.py",
+    "sha256": "0FDA9352C34A518AF8DB7A2A0E6EDBA412154EE27512CEBD957957F088F9A1E6"
+  },
+  {
+    "path": "03_Analysis_Tools_and_Scripts\\find_inx_decrypt.py",
+    "sha256": "36EA6060918A1BF66F26555509279E478A9BED7229867DF1622A57B5B9F89AC2"
+  },
+  {
+    "path": "aider_prompts\\session_1_calc_engine.md",
+    "sha256": "1DC0CA49239C5AAF286416C183922352E95540E6BC05D64862CC6EF8743974E0"
+  },
+  {
+    "path": "aider_prompts\\session_2_backend_api.md",
+    "sha256": "5B468770A0B218E6F98B40118C238D3F4815C179BE31B0FFBE8B293CC772BF5D"
+  },
+  {
+    "path": "aider_prompts\\session_3_cockpit_ui.md",
+    "sha256": "89558A9204214787F297BEC70F40564322F8B64492DD102DC39DEEB8065B3A6F"
+  },
+  {
+    "path": "aider_prompts\\session_4_easy_input_ui.md",
+    "sha256": "FF15557F34E560DE963721B9C35AC535067B25FDF4F44183CAD1C63C28916519"
+  },
+  {
+    "path": "aider_prompts\\session_5_docker_packaging.md",
+    "sha256": "F7BF3C66B8FD3A92F4E74020CD2B6426DA5E8BEF16F57739F96B06862EA5605C"
+  },
+  {
+    "path": "backend\\Cargo.toml",
+    "sha256": "DF5DAD2B4662B3DC7C617BAC77E31E0BF882BA7B0FB0B250193B91C96CC53EAA"
+  },
+  {
+    "path": "backend\\src\\domain\\mod.rs",
+    "sha256": "3A2EDC626493415E92685B304654B3C9419BD1E187E51CC974BA56D54E22257A"
+  },
+  {
+    "path": "backend\\src\\domain\\types.rs",
+    "sha256": "6C12D3B059EDF112F28C1EFD2150922B6D63BECF90731738402A9160C4E56091"
+  },
+  {
+    "path": "frontend\\package.json",
+    "sha256": "719BB9EBE5C75216115A714130F7261FC1D094A475A93FA9AE3F7A10DD2A692B"
+  },
+  {
+    "path": "frontend\\tsconfig.json",
+    "sha256": "F91C31DE47C587ADE8D827E6FD15034815A0740E0A0F0900DD4FEE2ED5CA4960"
+  },
+  {
+    "path": "frontend\\src\\bindings.ts",
+    "sha256": "A845F7D818485C38C34688F3051B45F18D48BB10821089009B75C429AE12C7C0"
+  },
+  {
+    "path": "migrations\\001_core_cost_schema.sql",
+    "sha256": "D1BA685B0D1517C39CF59AAD037CA38B78DAF1AC379658772E7BD23B8E51E893"
+  },
+  {
+    "path": "scripts\\verify_gate.ps1",
+    "sha256": "F05A9A187C0135711490FB5C4D692EBBF64C0AB24098BF6089E065AC20047B65"
+  }
+]

@@ -1,0 +1,25 @@
+# ============================================================================
+# .aiderignore — トークン上限保護・仕様ノイズ遮断定義
+# ============================================================================
+
+# 1. 旧システム（ガリバー・プロステージ v6.2.0）逆コンパイル・解析資産（700KB超）
+00_ガリバー・プロステージ_v6.2.0_静的解析レポート.md
+01_DotNet_Assemblies_and_Decompiled/
+02_InstallShield_Decrypted_and_Scripts/
+03_Analysis_Tools_and_Scripts/
+
+# 2. フル仕様書（今回は後回しにする経理仕訳・手形・JV等を含むためAiderから隠蔽）
+# ※原価管理に必要な仕様はすべて CONVENTIONS.md と migrations/001_core_cost_schema.sql に凝縮済
+建設業特有業務データモデル仕様書.md
+
+# 3. 管理者AI専用の指示書・プロンプト集（ワーカーであるAiderのRepo Mapから除外）
+MANAGER_AI_HANDBOOK.md
+aider_prompts/
+scripts/
+
+# 4. ビルド成果物・依存パッケージ
+target/
+node_modules/
+dist/
+.git/
+*.log
