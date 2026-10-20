@@ -6,11 +6,11 @@
 
 記録整備の完了条件は、4アンカーの改行とハッシュの再現、本文改変の拒否、自動コミット無効の整合、過去の試験証拠の保持、現況と証拠の所在の明記である。業務コードやDBデータ、依存は変更しない。
 
-## 最初に実行する指示：記録整備の統合
+## 最初に確認する指示：記録整備の統合と整理
 
 対象PR: https://github.com/benihisago41/ProGenba/pull/2 （ai/codex/completion-records → main）。実装PR #1は既に統合・整理済みであり、このPR #2とは区別する。
 
-> artifacts/HANDOFF.md、VERIFICATION.md、verification-summary.json、record-maintenance.jsonを読み、ai/codex/completion-recordsの差分と検証結果をレビューする。PRの実際のマージ状態とユーザーの承認範囲を確認し、承認済みならmainへ通常マージする。mainへ直接コミットしない。main同期後は4アンカーハッシュとAiderのauto-commits:falseを確認する。アプリの業務コードが変わっていなければ、既存のRust/API/画面試験を一律に再実行しない。自分のログをローカルのartifacts/closed-worktrees-<日付>/へ退避し、統合・未コミット状態・他チャットとプロセスの使用を確認して、自分のworktreeとローカル/GitHubの作業ブランチを強制オプションなしで削除する。git worktree list、git branch、git ls-remote --headsで残存を確認し、結果を記録する。
+> artifacts/HANDOFF.md、VERIFICATION.md、verification-summary.json、record-maintenance.jsonを読み、PR #2の実際のマージ状態を確認する。統合と整理が済んでいれば、この手順を再実行せず次段階へ進む。未統合ならai/codex/completion-recordsの差分と検証結果をレビューし、ユーザーの承認範囲内でmainへ通常マージする。mainへ直接コミットしない。main同期後は4アンカーハッシュとAiderのauto-commits:falseを確認する。アプリの業務コードが変わっていなければ、既存のRust/API/画面試験を一律に再実行しない。自分のログをローカルのartifacts/closed-worktrees-<日付>/へ退避し、統合・未コミット状態・他チャットとプロセスの使用を確認して、自分のworktreeとローカル/GitHubの作業ブランチを強制オプションなしで削除する。git worktree list、git branch、git ls-remote --headsで残存を確認し、結果を記録する。
 
 この統合が済めば、当初の社内検証用スコープを閉じる。以下は運用へ進む場合の別フェーズ案であり、今回の未実装不具合として扱わず、勝手に着手しない。
 

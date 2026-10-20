@@ -20,8 +20,10 @@
   "archive_is_published": false,
   "maintenance": {
     "branch": "ai/codex/completion-records",
-    "integration_status": "review-pending",
+    "integration_status_source": "linked-github-pull-request",
+    "evidence_phase": "pre-merge-focused-verification",
     "pull_request": "https://github.com/benihisago41/ProGenba/pull/2",
+    "post_merge_local_receipt": "artifacts/closed-worktrees-2026-10-21/completion-records/CLEANUP.md",
     "evidence": "artifacts/record-maintenance.json",
     "next_instructions": "artifacts/NEXT_ACTIONS.md"
   },
