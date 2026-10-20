@@ -2,15 +2,48 @@
 
 現場で発生した外注出来高、材料・経費、出面、資機材損料を記録し、本工事・追加工事ごとの予算と見込粗利を確認する社内検証用システムです。
 
-## 起動
+## クイックスタート（別PCでの新規起動）
 
-WindowsのDocker Desktop（Linuxコンテナ）とPowerShell 7を使います。RustやPostgreSQLのホストインストールは不要です。
+リポジトリのクローンだけで、サンプル工事データ入りの検証環境を新規作成できます。ホスト側へのRust、Node.js、PostgreSQLの追加インストールは不要です。
 
-```powershell
-pwsh -File scripts/start_local.ps1
+### 前提条件
+- **Windows**: Docker Desktop（Linuxコンテナ）、Git、PowerShell 7 (`pwsh`)
+- **Linux / macOS**: Docker、Docker Compose v2 (`docker compose`)、Git、`curl`
+
+### 起動手順
+
+```sh
+git clone https://github.com/benihisago41/ProGenba.git
+cd ProGenba
 ```
 
-初回はローカル接続用のランダムなDBパスワードを `.env` に作成し、アプリとPostgreSQL 16の2サービスをビルド・起動します。既定の接続先は <http://127.0.0.1:8080> です。既に `.env` がある場合は保持します。
+- **Windows (PowerShell 7)**:
+  ```powershell
+  pwsh -File scripts/start_local.ps1
+  ```
+- **Linux / macOS (POSIX sh)**:
+  ```sh
+  sh scripts/start_local.sh
+  ```
+
+### 初回起動の挙動と引き継ぎ不要な資材
+- 初回起動時は `.env`（ランダムなDBパスワード、接続先設定）を自動生成し、コンテナの依存取得とビルドを行うため時間がかかります。既存の `.env` やDockerボリュームがある場合は変更・削除せずそのまま保持します。
+- サンプル工事（「青葉台レジデンス新築工事」の本工事・追加工事）と実際原価0円の状態から起動します。
+- 元PCのコンテナ、`.env`、DBダンプ、`artifacts/` や `closed-worktrees-*` 内の画像・ログは新規起動の必須資材ではありません。また、リポジトリ内の共有JSON等は過去の試験記録であり、別PCでの動作成功を保証するものではありません。
+
+### 動作確認（別PCでの合格条件）
+1. ヘルスチェック応答の確認:
+   `http://127.0.0.1:8080/api/v1/health` にアクセス（または `curl --fail http://127.0.0.1:8080/api/v1/health` を実行）し、正常応答が返ること。
+2. 画面とサンプルデータの確認:
+   ブラウザで <http://127.0.0.1:8080> を開き、「青葉台レジデンス新築工事」のコックピットとサンプル予算が表示されれば合格です。
+
+※別PC（実機間）でのクローンからの起動検証は現在未実施です。
+
+元DBを移行しない判断の根拠と移行先での確認項目は [別環境向け手順](artifacts/FRESH_START.md)、実施済みの検証範囲は [新規構築の検証記録](artifacts/fresh-start.json) を参照してください。
+
+## 起動・運用の詳細
+
+初回はローカル接続用のランダムなDBパスワードを `.env` に作成し、アプリとPostgreSQL 16の2サービスをビルド・起動します。既定の接続先は <http://127.0.0.1:8080> です。既に `.env` がある場合は保持します。2回目以降でビルドを省略する場合は `-NoBuild`（PowerShell）または `--no-build`（sh）を指定できます。
 
 `.env` を用意した後は `docker compose up -d --build` でも起動できます。社内LANで試す場合は `.env` の `APP_BIND_ADDRESS` をホストのLANアドレスに変更します。ポート変更は `APP_PORT` です。DBのホストポートは公開しません。
 
