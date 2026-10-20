@@ -110,7 +110,7 @@ try {
   });
   assert.deepEqual(errors,[]);
   await page.screenshot({path:'artifacts/browser/cockpit-desktop.png',fullPage:true});
-  writeFileSync('artifacts/acceptance-browser.json',JSON.stringify({passed:true,base,checks,records,page_errors:errors},null,2));
+  writeFileSync('artifacts/acceptance-browser.json',JSON.stringify({passed:true,base,database_container:dbContainer,checks,records,page_errors:errors},null,2));
 }catch(error){
   await page.screenshot({path:'artifacts/browser/failure.png',fullPage:true}).catch(()=>{});
   writeFileSync('artifacts/acceptance-browser.json',JSON.stringify({passed:false,checks,records,error:String(error),page_errors:errors},null,2));throw error;

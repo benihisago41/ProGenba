@@ -1,0 +1,28 @@
+{
+  "passed": true,
+  "base": "http://127.0.0.1:8080",
+  "checks": [
+    "browser-created-cost-present",
+    "app-and-db-restart",
+    "readiness-recovered",
+    "all-cockpit-values-unchanged"
+  ],
+  "branches": [
+    {
+      "key": {
+        "company_code": "0000",
+        "project_code": "PRJ-2026-A",
+        "branch_code": "000"
+      },
+      "actual_cost": 3013423
+    },
+    {
+      "key": {
+        "company_code": "0000",
+        "project_code": "PRJ-2026-A",
+        "branch_code": "001"
+      },
+      "actual_cost": 10
+    }
+  ]
+}

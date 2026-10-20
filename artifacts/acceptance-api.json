@@ -1,6 +1,7 @@
 {
   "passed": true,
   "base": "http://127.0.0.1:8080",
+  "database_container": "progenba-db-1",
   "tests": [
     "readiness-and-json-contract",
     "subcontract-tax-deductions-and-cost",

@@ -1,0 +1,42 @@
+name: progenba
+
+services:
+  db:
+    image: postgres:16-alpine
+    labels:
+      ai.agent: codex
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sirius
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?環境変数POSTGRES_PASSWORDを設定してください}
+      POSTGRES_DB: sirius_reborn
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+      LANG: C.UTF-8
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./migrations/001_core_cost_schema.sql:/docker-entrypoint-initdb.d/001_core_cost_schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U sirius -d sirius_reborn"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    labels:
+      ai.agent: codex
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://sirius:${POSTGRES_PASSWORD:?環境変数POSTGRES_PASSWORDを設定してください}@db:5432/sirius_reborn
+      STATIC_DIR: /app/static
+    ports:
+      - "${APP_BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-8080}:8080"
+
+volumes:
+  pgdata:
