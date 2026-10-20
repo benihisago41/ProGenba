@@ -18,6 +18,14 @@
   "merged_commit": "ad38e184e90c3e066492e6e8fd6ed7fadf2cd29d",
   "local_archive": "artifacts/closed-worktrees-2026-10-21/sirius-reborn",
   "archive_is_published": false,
+  "fresh_start": {
+    "preferred_handoff": "build-from-repository-and-initialize-seed",
+    "existing_database_migration_required_at_inspection": false,
+    "existing_database_matches_seed_tables": 14,
+    "instructions": "artifacts/FRESH_START.md",
+    "evidence": "artifacts/fresh-start.json",
+    "physical_other_pc_verified": false
+  },
   "maintenance": {
     "branch": "ai/codex/completion-records",
     "integration_status_source": "linked-github-pull-request",
