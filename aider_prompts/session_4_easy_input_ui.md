@@ -33,3 +33,15 @@ Read-Onlyで提供された `CONVENTIONS.md` および `frontend/src/bindings.ts
 
 ### タブ4：🚜 「資機材・重機の現場出庫を入れる」（機械・仮設損料）
 - 資機材マスタ（`枠組足場セット`、`防音型ディーゼル発電機` など）を選択し、数量・使用日数・運賃を入力すると、`数量 × 日単価 × 日数 + 運賃` を自動計算して `API_ENDPOINTS.SUBMIT_EQUIPMENT_MOVEMENT` へPOST。
+
+## 管理者による確定補足
+- 編集は frontend/src/EasyCostInput.tsx, frontend/src/App.tsx の2つ。他者の変更を戻さず、アンカー・依存・他ファイル・コマンド・commit・push禁止。
+- EasyCostInput propsは {projects:ProjectCostCockpitDto[],companyCode:string,onRegistered:()=>Promise<void>}。GET lookupsにcompany_codeをURLSearchParamsで付ける。登録後はlookupsを再取得し、onRegisteredもawaitして両画面を最新化。
+- JSON型はLookupsDto/既存Request/CostRegistrationResponse/ErrorResponseをimport。decimal.jsで全金額/率計算、quantity/unit_price/work_hoursはJSON文字列。円は整数number（safe integer/15桁検証）。
+- 外注スライダーは累計進捗0〜100、今回額=round_half_up(契約額×進捗/100)−前回累計。金額直接入力も可。注文実値tax_rateと率分子分母・accum_assessed_tax_amountで累計差額税を計算する。表示に「概算（確定時に再計算）」を明記。率を10%/0.3%固定しない。固定控除・相殺入力と対象年月も用意。
+- 全入力モードで工事枝番を選択でき、完成2/3は選択不可（名称と状態表示）、完成1は注意表示。外注は選択枝番の注文だけ表示。
+- 材料経費は品目カードから工種と費目を自動セット。数量/単価/日付/任意仕入先を入力でき、専門コードを直接入力させない。
+- 日報は作業員・工事枝番/作業・8/4/10時間ボタン。既定日付はローカル日付。資機材は数量・正の日数・運賃・整備費と日付を入力。マスタから日単価を使う。
+- フォームsubmitと同時にbusy refを立て、並行登録を確実に防ぐ。通信失敗時は入力を保持し、日本語エラーをrole=alertに表示。成功時の伝票番号/警告も表示。再試行/再読込を用意。送信中に工事切替等で送信内容が変わらないようにする。
+- 各フィールドlabelとエラーを実装。負数/不正日付/空欄/数量小数4桁/費目選択なし/累計進捗後退/発注超過は送信前に拒否する。
+- UIは既存index.htmlの共有スタイルに合わせ375pxでも操作可能。Appの既存コックピット・会社・工事選択とエラー処理を維持。

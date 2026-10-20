@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "database": "PostgreSQL 16",
+  "checks": [
+    "initialization",
+    "company-primary-keys",
+    "approved-header-update-guards",
+    "positive-rate-denominators",
+    "cross-company-foreign-key",
+    "seed-branches"
+  ]
+}

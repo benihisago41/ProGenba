@@ -52,3 +52,16 @@ Read-Onlyで提供された `CONVENTIONS.md`, `migrations/001_core_cost_schema.s
 ### 4. `backend/src/main.rs`
 - 環境変数 `DATABASE_URL`（未設定時は `"postgres://postgres:postgres@localhost:5432/sirius_reborn"`）で `PgPool` に接続。
 - `/api/v1/...` ルーターと、フロントエンドのビルド成果物（`../frontend/dist` または `./static`）を配信する `ServeDir`、CORS許可を設定し、`0.0.0.0:8080` でリッスンする。
+
+## 管理者による確定補足（既存指示と矛盾する場合はこちらを優先）
+- 編集対象は api/mod.rs, api/projects.rs, api/actual_costs.rs, main.rs の最大4ファイル。他の変更を戻さず、アンカー・calc.rs・依存を変更しない。コマンド・commit・pushは禁止。
+- DBクエリは動的 sqlx::query と Row::try_get を使い、ビルド時DBを要求するquery!系マクロを使わない。NUMERIC金額取得はCAST AS BIGINT、数量/率はDecimal。Decimal計算結果が15桁を超える場合は422（JS safe integerも超えない）。
+- main.rsは mod api; とし、domainは sirius_reborn_backend::domain を使用。api/mod.rsに共有AppState/PgPool、ApiErrorのIntoResponse、JSON rejectionを共通ErrorResponseへ変換する処理、routerを実装。public router(pool: PgPool) -> Router とする。mainは DATABASE_URL 未設定で安全にエラー終了（認証情報をログ出力しない）、STATIC_DIR 既定 ./static、PORT既定8080、GET /api/v1/health はSELECT 1でDB readiness確認、API未定義はJSON404、staticはSPAフォールバックで配信。CORSはsame-originを基本とする。
+- cockpitは company_code既定0000、project_code/branch_code任意絞込。companyを全クエリとJOIN条件へ含める。最新承認済予算/発注をそれぞれ選択後、原価ソースごとに独立集計してから結合する。素の複数明細表を同時JOINして金額が倍増しないこと。budgetは明細合計、工種別も同じ履歴。by_work_typeは予算・発注・原価のいずれか存在する工種を全て表示。予算0の率は0、請負0の粗利率は0。RateはDecimal小数2桁。forecast=max(予算,発注確定,実原価)。発注確定=最新承認発注額+材料経費+労務+機械、外注出来高を追加して二重計上しない。
+- lookupsもcompany_code既定0000。型はPhase0のLookupsDtoそのまま。発注は最新承認済のみ。過去査定累計は注文番号全履歴でSUM(curr_assessed_...)を使い、最新累計のSUMをしない。is_deleted取引先は除外し、employees/suppliersロールを確認。契約実値の率と税額を返す。
+- 全POSTは201 CostRegistrationResponse{document_no,warnings}。404不存在、409旧発注履歴、422入力不正/ロック。JSON失敗も共通ErrorResponse{code,message}。DBエラーは詳細/接続文字列を応答やログに漏らさない。
+- ガードからINSERTまで同一transaction。project_branchesをFOR UPDATEし区分2/3拒否、区分1警告、internal_end_date超過警告。会社内の工種(厳密12桁)、仕入先、社員、機材の存在/ロール確認を行う。数量・時間は正数でscale<=3、単価は0以上でscale<=3、usage_daysは正整数、金額は0以上/15桁以下、費目0100/0400、年月は実在YYYYMM、branchは3桁。積・加算はchecked Decimal/i64で、DB制約による黙った丸めを許可しない。
+- 採番はpg_advisory_xact_lock(hashtextextended(company_code || ':' || 伝票種別,0))を取得し、該当表のcompany内MAX(12桁数字文字列)から+1、左ゼロ詰め12桁。SQL table名は固定したmatch/定数からのみ選択しユーザー値を補間しない。上限超過は422。採番も登録と同一TX。
+- 出来高はcompany+order_number全体のadvisory lockも取り、最新承認履歴をFOR UPDATEで取得、req履歴と一致しなければ409。過去全履歴のSUMから累計を計算しcalc関数を呼ぶ。req値でproject/subcontractor/work_type/率を決めない。前回+今回>契約、負額、控除超過を拒否。INSERTにprogress_rate_percentを累計/契約*100で設定（契約0は0）。無関係な承認済発注UPDATEを行わない。
+- direct/daily/equipmentは純粋calcを呼ぶ前にchecked積で15桁金額範囲を検証しpanicを防止。機械movement_typeは02。日報は概算原価で、月次確定賃金の登録UI/APIは今回対象外。
+- 計算・DBデコードのunwrapやexpectは避け、HTTPエラーへ伝播する。予算超過は警告表示対象で登録を止めない。

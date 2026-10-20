@@ -126,7 +126,55 @@ export interface SubcontractOrderSummaryDto {
   work_type_name: string;
   order_amount_tax_ex: YenAmount;
   accum_assessed_amount_tax_ex: YenAmount;
+  accum_assessed_tax_amount: YenAmount;
   remaining_order_balance: YenAmount;
+  tax_rate: DecimalString;
+  retainage_rate_num: DecimalString;
+  retainage_rate_den: DecimalString;
+  safety_assoc_rate_num: DecimalString;
+  safety_assoc_rate_den: DecimalString;
+}
+
+export interface WorkTypeLookupDto {
+  work_type_code: string;
+  work_type_name: string;
+}
+
+export interface EmployeeLookupDto {
+  employee_code: string;
+  employee_name: string;
+  standard_daily_wage: YenAmount;
+}
+
+export interface SupplierLookupDto {
+  partner_code: string;
+  partner_name: string;
+}
+
+export interface EquipmentLookupDto {
+  equipment_code: string;
+  equipment_name: string;
+  unit: string;
+  daily_rent_price: DecimalString;
+}
+
+export interface LookupsDto {
+  quick_templates: QuickItemTemplateDto[];
+  subcontract_orders: SubcontractOrderSummaryDto[];
+  work_types: WorkTypeLookupDto[];
+  employees: EmployeeLookupDto[];
+  suppliers: SupplierLookupDto[];
+  equipments: EquipmentLookupDto[];
+}
+
+export interface CostRegistrationResponse {
+  document_no: string;
+  warnings: string[];
+}
+
+export interface ErrorResponse {
+  code: string;
+  message: string;
 }
 
 /** API エンドポイント契約一覧（バックエンド・フロントエンド間のURL不一致防止定数） */

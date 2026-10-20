@@ -28,17 +28,17 @@ impl YenAmount {
 /// 数量・工数型 — DB: NUMERIC(15,3)（小数点以下3桁）
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Serialize, Deserialize)]
 #[serde(transparent)]
-pub struct Quantity(pub Decimal);
+pub struct Quantity(#[serde(with = "rust_decimal::serde::str")] pub Decimal);
 
 /// 単価型 — DB: NUMERIC(15,3)（小数点以下3桁）
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Serialize, Deserialize)]
 #[serde(transparent)]
-pub struct UnitPrice(pub Decimal);
+pub struct UnitPrice(#[serde(with = "rust_decimal::serde::str")] pub Decimal);
 
 /// 比率・進捗率型 — DB: NUMERIC(5,2)（小数点以下2桁）
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Serialize, Deserialize)]
 #[serde(transparent)]
-pub struct Rate(pub Decimal);
+pub struct Rate(#[serde(with = "rust_decimal::serde::str")] pub Decimal);
 
 /// マルチテナント複合主キー：工事枝番識別子
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -249,4 +249,94 @@ pub struct EasyEquipmentMovementRequest {
     pub usage_days: i32,
     pub freight_fee: YenAmount,
     pub maintenance_fee: YenAmount,
+}
+
+/// 品目・作業辞書テンプレートDTO
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct QuickItemTemplateDto {
+    pub template_code: String,
+    pub item_label: String,
+    pub work_type_code: String,
+    pub cost_element_code: String,
+    pub default_unit: String,
+    pub default_unit_price: UnitPrice,
+}
+
+/// 下請注文書サマリーDTO（出来高査定入力時の選択・プレビュー計算用）
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SubcontractOrderSummaryDto {
+    pub order_number: String,
+    pub order_history_no: i16,
+    pub project_code: String,
+    pub branch_code: String,
+    pub subcontractor_code: String,
+    pub subcontractor_name: String,
+    pub work_type_code: String,
+    pub work_type_name: String,
+    pub order_amount_tax_ex: YenAmount,
+    pub accum_assessed_amount_tax_ex: YenAmount,
+    pub accum_assessed_tax_amount: YenAmount,
+    pub remaining_order_balance: YenAmount,
+    #[serde(with = "rust_decimal::serde::str")]
+    pub tax_rate: Decimal,
+    pub retainage_rate_num: Rate,
+    pub retainage_rate_den: Rate,
+    pub safety_assoc_rate_num: Rate,
+    pub safety_assoc_rate_den: Rate,
+}
+
+/// 工種マスタルックアップDTO
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorkTypeLookupDto {
+    pub work_type_code: String,
+    pub work_type_name: String,
+}
+
+/// 社員・作業員ルックアップDTO
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EmployeeLookupDto {
+    pub employee_code: String,
+    pub employee_name: String,
+    pub standard_daily_wage: YenAmount,
+}
+
+/// 仕入先・外注先ルックアップDTO
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SupplierLookupDto {
+    pub partner_code: String,
+    pub partner_name: String,
+}
+
+/// 仮設資機材ルックアップDTO
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EquipmentLookupDto {
+    pub equipment_code: String,
+    pub equipment_name: String,
+    pub unit: String,
+    pub daily_rent_price: UnitPrice,
+}
+
+/// かんたん入力用マスタ辞書一括レスポンスDTO
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LookupsDto {
+    pub quick_templates: Vec<QuickItemTemplateDto>,
+    pub subcontract_orders: Vec<SubcontractOrderSummaryDto>,
+    pub work_types: Vec<WorkTypeLookupDto>,
+    pub employees: Vec<EmployeeLookupDto>,
+    pub suppliers: Vec<SupplierLookupDto>,
+    pub equipments: Vec<EquipmentLookupDto>,
+}
+
+/// 原価登録API共通成功レスポンスDTO
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CostRegistrationResponse {
+    pub document_no: String,
+    pub warnings: Vec<String>,
+}
+
+/// API共通エラーレスポンスDTO
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ErrorResponse {
+    pub code: String,
+    pub message: String,
 }
