@@ -38,4 +38,4 @@
 - 停止・再開は本体でdocker compose stop / docker compose start。初期構築はREADME.mdのscripts/start_local.ps1。
 - Gate2/3の開発用再検証には専用DB環境の再作成が必要。実データDBで受入スクリプトを実行しない。
 - 記録整備の統合と、その後の別フェーズの具体的な指示はNEXT_ACTIONS.md。業務機能の追加を今回の完了条件に混ぜない。
-- 認証・権限、マスタ・予算・発注編集、月次確定賃金入力、実データ移行、バックアップ運用、監視・監査ログは対象外。物理スマホ/LAN別端末・負荷試験は未実行。限定された社内検証用。
+- 認証・権限、マスタ・予算・発注編集、月次確定賃金入力、実データ移行、監視・監査ログは対象外。バックアップはscripts/backup_db.ps1とrestore_db.ps1で取得・別DB復元・全行照合まで確認済み（BACKUP_RESTORE.md、backup-restore.json）。定期実行は未登録。物理スマホ/LAN別端末・負荷試験は未実行。限定された社内検証用。
