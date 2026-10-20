@@ -16,8 +16,8 @@ map-tokens: 1024
 # 差分編集フォーマットを固定
 edit-format: diff
 
-# 管理者AIが各セッション直後に scripts/verify_gate.ps1 で厳密監査・ロールバック制御を行うため
-# Aider内部のauto-testはオフにし、自動コミットのみ有効化する
+# 管理者AIが各セッション直後に scripts/verify_gate.ps1 で厳密監査・差分確認とコミットを行うため
+# Aider内部のauto-testおよび自動コミットは無効化する
 auto-test: false
-auto-commits: true
+auto-commits: false
 dirty-commits: false

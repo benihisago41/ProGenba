@@ -1,0 +1,35 @@
+{
+  "passed": true,
+  "checked_at": "2026-10-20T15:47:16.0135522Z",
+  "checked_source_commit": "52143d296a3e8347341ec2caccc223d12af04131",
+  "application_source_unchanged_from": "ad38e184e90c3e066492e6e8fd6ed7fadf2cd29d",
+  "scope": "repository-settings-records-and-next-instructions",
+  "fresh_checkout_checks": [
+    {
+      "core_autocrlf": "true",
+      "checkout_anchor_hashes": "4/4",
+      "anchor_line_endings": "LF",
+      "gate5_static_audit_passed": true,
+      "substantive_anchor_drift_rejected": true
+    },
+    {
+      "core_autocrlf": "false",
+      "checkout_anchor_hashes": "4/4",
+      "anchor_line_endings": "LF",
+      "gate5_static_audit_passed": true,
+      "substantive_anchor_drift_rejected": null
+    }
+  ],
+  "anchors_content_unchanged_except_worktree_newlines": true,
+  "previous_anchor_hashes_preserved_in": "artifacts/anchor-hashes-before-normalization.json",
+  "aider_default_and_wrapper_disable_auto_commits": true,
+  "historical_acceptance_evidence_unchanged": true,
+  "shared_json_parse_passed": true,
+  "archived_original_input_hashes": "37/37",
+  "archived_screenshots_and_logs_exist": true,
+  "runtime_health_http_status": 200,
+  "runtime_data_written": false,
+  "full_rust_api_browser_regression_rerun": false,
+  "regression_not_rerun_reason": "Application, schema, dependencies and historical acceptance evidence are unchanged; scoped settings and audit checks were run instead.",
+  "temporary_checkout_worktrees_removed": 2
+}
