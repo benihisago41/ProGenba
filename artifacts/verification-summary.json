@@ -21,6 +21,7 @@
   "maintenance": {
     "branch": "ai/codex/completion-records",
     "integration_status": "review-pending",
+    "pull_request": "https://github.com/benihisago41/ProGenba/pull/2",
     "evidence": "artifacts/record-maintenance.json",
     "next_instructions": "artifacts/NEXT_ACTIONS.md"
   },

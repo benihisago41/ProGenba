@@ -7,6 +7,7 @@
 - 本体・稼働元: C:/Users/murph/Documents/GitHub/ProGenba。mainはorigin/mainと同期済み。
 - 実装用のai/codex/sirius-rebornとProGenba.wt-codex-sirius-rebornは統合確認後に削除済み。削除数はローカルブランチ1、GitHubブランチ1、worktree1。
 - 記録整備は別ブランチai/codex/completion-records、worktreeはC:/Users/murph/Documents/GitHub/ProGenba.wt-codex-completion-records。未統合の間は保持し、統合後に使用状況を確認して整理する。
+- 記録整備PR: https://github.com/benihisago41/ProGenba/pull/2 （レビュー可能、mainへのマージは未実施）。このブランチの削除数はまだ0。
 - 禁止範囲: mainへの直接コミット、旧解析資産の改変、他チャットの変更・プロセス・Docker資産の操作、認証情報の記録。
 
 ## 実装と検証
