@@ -1,0 +1,23 @@
+# ============================================================================
+# .aider.conf.yml — Aider セッション分断・伝言ゲーム防止設定
+# ============================================================================
+
+# 毎セッション必ず Read-Only（書き換え不可）としてコンテキスト先頭に固定注入する憲法ファイル
+read:
+  - AGENTS.md
+  - CONVENTIONS.md
+
+# 前セッションのチャット履歴を引き継がない（伝言ゲームとトークン肥大化の完全防止）
+restore-chat-history: false
+
+# Repo Mapのトークン消費を最小限に抑える（各セッションで必要なファイルは明示的に --read / --file 指定）
+map-tokens: 1024
+
+# 差分編集フォーマットを固定
+edit-format: diff
+
+# 管理者AIが各セッション直後に scripts/verify_gate.ps1 で厳密監査・ロールバック制御を行うため
+# Aider内部のauto-testはオフにし、自動コミットのみ有効化する
+auto-test: false
+auto-commits: true
+dirty-commits: false

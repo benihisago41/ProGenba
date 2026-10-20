@@ -1,0 +1,53 @@
+{
+  "passed": true,
+  "base": "http://127.0.0.1:8080",
+  "database_container": "progenba-db-1",
+  "checks": [
+    "subcontract-real-ui-preview-and-registration",
+    "material-rounding-and-client-validation",
+    "expense-card-maps-to-expense-cost",
+    "network-failure-keeps-input-and-allows-retry",
+    "double-click-registers-once",
+    "daily-report-quick-hours-and-standard-wage",
+    "equipment-rent-freight-maintenance",
+    "additional-branch-and-whole-project-totals",
+    "mobile-layout-and-input-controls",
+    "initial-fetch-error-and-retry",
+    "oversized-aggregate-shows-error-and-recovers"
+  ],
+  "records": [
+    {
+      "kind": "subcontract-progress",
+      "no": "000000000001"
+    },
+    {
+      "kind": "direct-entry",
+      "no": "000000000001"
+    },
+    {
+      "kind": "direct-entry",
+      "no": "000000000002"
+    },
+    {
+      "kind": "direct-entry",
+      "no": "000000000003"
+    },
+    {
+      "kind": "direct-entry",
+      "no": "000000000004"
+    },
+    {
+      "kind": "daily-report",
+      "no": "000000000001"
+    },
+    {
+      "kind": "equipment-movement",
+      "no": "000000000001"
+    },
+    {
+      "kind": "direct-entry",
+      "no": "000000000005"
+    }
+  ],
+  "page_errors": []
+}

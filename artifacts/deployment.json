@@ -1,0 +1,13 @@
+{
+  "build": "Rust1.80 release --locked / Node22 npm ci",
+  "services": [
+    "progenba-app-1",
+    "progenba-db-1"
+  ],
+  "runtime_user": "10001:10001",
+  "fresh_database_initialized": true,
+  "application_image": "sha256:ee3578c78128b9eeeb93615338b4e4ed31b56a06c16482272832c1d811352b55",
+  "database_port_published": false,
+  "url": "http://127.0.0.1:8080",
+  "passed": true
+}

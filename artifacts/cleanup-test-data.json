@@ -1,0 +1,6 @@
+{
+  "passed": true,
+  "database_container": "progenba-db-1",
+  "removed_documents": 8,
+  "remaining_cost_rows": 0
+}

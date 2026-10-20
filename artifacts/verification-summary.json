@@ -1,0 +1,22 @@
+{
+  "temporary_containers_removed": 3,
+  "rust_tests": 8,
+  "passed": true,
+  "test_data_removed": 8,
+  "retained_worktree": "ProGenba.wt-codex-sirius-reborn",
+  "worktrees_deleted": 0,
+  "restart_persistence": true,
+  "api_acceptance_scenarios": 10,
+  "branch": "ai/codex/sirius-reborn",
+  "browser_acceptance_scenarios": 11,
+  "test_harness_isolation": true,
+  "merge_status": "unmerged-local-no-remote",
+  "gates": [
+    1,
+    2,
+    3,
+    4,
+    5
+  ],
+  "branches_deleted": 0
+}
