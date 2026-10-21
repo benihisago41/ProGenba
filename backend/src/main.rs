@@ -17,11 +17,12 @@ async fn main() {
         }
     };
 
-    // 002_auth.sql（冪等）を適用する。既存DB（initdb 済みボリューム）でも認証テーブルを用意するため。
+    // 002_auth.sql・003_revision_workflow.sql（いずれも冪等）を番号順に適用する。
+    // 既存DB（initdb 済みボリューム）でも認証テーブル・操作履歴テーブルを用意するため。
     // 失敗時は詳細（接続文字列等）を出さずに終了する。
     let pool = connect_pool(&database_url).await;
-    if api::auth::apply_auth_migration(&pool).await.is_err() {
-        tracing::error!("認証スキーマ（002_auth.sql）の適用に失敗しました");
+    if let Err(name) = api::schema::apply_startup_migrations(&pool).await {
+        tracing::error!("起動時スキーマ（{}）の適用に失敗しました", name);
         std::process::exit(1);
     }
 

@@ -666,6 +666,213 @@
         text-align: center;
         padding: 36px 20px;
       }
+
+      /* 予算・発注（登録と承認）: 375px 幅でも横スクロールが出ないよう、表ではなく折り返す行で表示する */
+      .rev-root {
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+
+      .rev-columns {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 18px;
+      }
+
+      @media (min-width: 1024px) {
+        .rev-columns {
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        }
+      }
+
+      .rev-col {
+        min-width: 0;
+      }
+
+      .rev-h3 {
+        margin: 0 0 8px;
+        font-size: 0.98rem;
+        color: var(--text-heading);
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .rev-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .rev-row {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 6px 12px;
+        padding: 8px 10px;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        background-color: #ffffff;
+        min-width: 0;
+      }
+
+      .rev-row-main {
+        flex: 1 1 220px;
+        min-width: 0;
+      }
+
+      .rev-row-amount {
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+
+      .rev-total {
+        margin-bottom: 8px;
+      }
+
+      .rev-muted {
+        color: var(--text-muted);
+        font-size: 0.84rem;
+      }
+
+      .rev-reason {
+        margin: 6px 0 0;
+        font-size: 0.82rem;
+        color: var(--warning);
+      }
+
+      .rev-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .rev-badge {
+        display: inline-flex;
+        padding: 2px 9px;
+        border-radius: 999px;
+        font-size: 0.76rem;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      .rev-badge-draft {
+        background-color: #e0f2fe;
+        color: #0369a1;
+      }
+
+      .rev-badge-approved {
+        background-color: var(--success-bg);
+        color: var(--success);
+      }
+
+      .rev-badge-rejected {
+        background-color: var(--danger-bg);
+        color: var(--danger);
+      }
+
+      .rev-diff {
+        margin: 6px 0 0;
+        padding-left: 18px;
+        font-size: 0.86rem;
+      }
+
+      .rev-diff-add {
+        color: var(--success);
+      }
+
+      .rev-diff-del {
+        color: var(--danger);
+        text-decoration: line-through;
+      }
+
+      .rev-diff-chg {
+        color: var(--warning);
+      }
+
+      .rev-editor,
+      .rev-panel,
+      .rev-new-order {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        min-width: 0;
+      }
+
+      .rev-panel,
+      .rev-new-order {
+        margin-top: 14px;
+        padding: 14px;
+        border: 1px dashed var(--border-color);
+        border-radius: var(--radius-sm);
+        background-color: #f8fafc;
+      }
+
+      .rev-line-editor {
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        padding: 10px 12px;
+        margin: 0;
+        min-width: 0;
+      }
+
+      .rev-line-editor legend {
+        font-weight: 700;
+        font-size: 0.86rem;
+        padding: 0 4px;
+      }
+
+      .rev-order {
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        padding: 10px 12px;
+        min-width: 0;
+      }
+
+      .rev-order-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 6px;
+      }
+
+      .rev-pair {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 6px;
+      }
+
+      .rev-check {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.9rem;
+      }
+
+      .rev-approve {
+        margin-top: 12px;
+        padding-top: 10px;
+        border-top: 1px solid var(--border-color);
+      }
+
+      /* 長い選択肢（工種名など）でグリッド列が画面幅を超えないようにする */
+      .rev-root .form-grid > *,
+      .rev-root .form-field {
+        min-width: 0;
+      }
+
+      .rev-root .form-select {
+        max-width: 100%;
+        text-overflow: ellipsis;
+      }
     </style>
   </head>
   <body>

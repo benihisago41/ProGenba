@@ -92,7 +92,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 専用Composeプロジェクト progenba-authtest を作り、2社×3役割の試験と既存DBへの起動時移行を検証して削除する
+      # 専用Composeプロジェクト progenba-authtest を作り、2社×3役割の試験・既存DBへの起動時移行（002/003）・
+      # 予算・発注の登録と承認の試験（scripts/test_revisions.mjs、375px 画面確認を含む）を行って削除する
       - name: Run auth integration tests
         shell: pwsh
         run: ./scripts/test_auth.ps1
@@ -105,4 +106,6 @@ jobs:
           path: |
             artifacts/auth-acceptance.json
             artifacts/acceptance-api-auth.json
+            artifacts/revisions-acceptance.json
+            artifacts/browser/revisions-375-*.png
           if-no-files-found: ignore

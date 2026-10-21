@@ -1,0 +1,182 @@
+{
+  "passed": true,
+  "checked_at": "2026-10-21T10:55:41.938Z",
+  "commit": "22e7b43e2dcd1760fc9dd3e24525f0729bdafbcb+uncommitted",
+  "environment": {
+    "compose_project": "progenba-authtest",
+    "base": "http://app:8080",
+    "note": "専用 Compose プロジェクトで test_api.mjs・test_auth.mjs の後に実行。稼働中の progenba-app-1 / progenba-db-1 は使用していない"
+  },
+  "users": "0000・9001 × revtest-viewer/registrar/approver（試験中だけ作成、パスワードは実行ごとに乱数生成し記録しない）",
+  "self_approval": "既定（REVISION_ALLOW_SELF_APPROVAL 未設定＝許可）で実行",
+  "summary": {
+    "total": 22,
+    "passed": 22,
+    "failed": 0
+  },
+  "tests": [
+    {
+      "name": "unauthenticated-and-content-type-guards",
+      "passed": true
+    },
+    {
+      "name": "viewer-can-read-but-cannot-create-drafts-403",
+      "passed": true
+    },
+    {
+      "name": "registrar-creates-revision-draft-copying-latest-approved",
+      "passed": true
+    },
+    {
+      "name": "only-one-unapproved-draft-per-key-409",
+      "passed": true
+    },
+    {
+      "name": "registrar-edits-draft-and-server-computes-line-amounts-and-total",
+      "passed": true
+    },
+    {
+      "name": "registrar-and-viewer-cannot-approve-403-and-cockpit-unchanged-before-approval",
+      "passed": true
+    },
+    {
+      "name": "reject-requires-reason-422",
+      "passed": true
+    },
+    {
+      "name": "approver-approves-budget-cockpit-reflects-expected-and-actual-cost-unchanged",
+      "passed": true
+    },
+    {
+      "name": "approved-version-cannot-be-changed-via-api-or-db-trigger",
+      "passed": true
+    },
+    {
+      "name": "reject-with-reason-then-new-draft-and-delete-draft",
+      "passed": true
+    },
+    {
+      "name": "concurrent-draft-creation-and-concurrent-approval-are-serialized",
+      "passed": true
+    },
+    {
+      "name": "order-revision-below-cumulative-assessment-is-422",
+      "passed": true
+    },
+    {
+      "name": "assessment-after-order-approval-uses-new-version-amount-and-balance",
+      "passed": true
+    },
+    {
+      "name": "approved-order-cannot-be-changed-via-api-or-db-trigger",
+      "passed": true
+    },
+    {
+      "name": "new-order-auto-numbering-duplicates-partner-roles-and-approval",
+      "passed": true
+    },
+    {
+      "name": "project-and-branch-registration-is-approver-only-with-validation",
+      "passed": true
+    },
+    {
+      "name": "budget-on-new-branch-starts-at-history-0-and-appears-in-cockpit-after-approval",
+      "passed": true
+    },
+    {
+      "name": "cross-company-access-is-rejected-and-data-unchanged",
+      "passed": true
+    },
+    {
+      "name": "revision-events-record-who-when-what-and-reasons-append-only",
+      "passed": true
+    },
+    {
+      "name": "completed-branch-blocks-revisions-422",
+      "passed": true
+    },
+    {
+      "name": "static-bundle-contains-revisions-tab",
+      "passed": true
+    },
+    {
+      "name": "ui-375px-no-horizontal-scroll-and-permission-reasons",
+      "passed": true
+    }
+  ],
+  "expected_values": {
+    "budgetH1": 36503002,
+    "budgetH3": 36504002,
+    "newBranch": 125957
+  },
+  "startup_migration_003": {
+    "initdb_revision_tables": 1,
+    "revision_schema_objects": 13,
+    "revision_tables_after_drop": 0,
+    "revision_schema_objects_after_drop": 0,
+    "restart1": {
+      "revision_tables": 1,
+      "revision_schema_same_as_initdb": true,
+      "business_digest_unchanged": true
+    },
+    "restart2_idempotent": {
+      "revision_tables": 1,
+      "revision_schema_same_as_initdb": true,
+      "business_digest_unchanged": true
+    },
+    "passed": true
+  },
+  "ui_check": {
+    "viewport": "375x812",
+    "measured": [
+      {
+        "role": "viewer",
+        "label": "予算・発注タブ",
+        "sw": 375,
+        "bw": 375,
+        "w": 375
+      },
+      {
+        "role": "approver",
+        "label": "予算・発注タブ",
+        "sw": 375,
+        "bw": 375,
+        "w": 375
+      },
+      {
+        "role": "approver",
+        "label": "予算明細の編集",
+        "sw": 375,
+        "bw": 375,
+        "w": 375
+      },
+      {
+        "role": "approver",
+        "label": "否認理由の入力",
+        "sw": 375,
+        "bw": 375,
+        "w": 375
+      },
+      {
+        "role": "approver",
+        "label": "新規発注案フォーム",
+        "sw": 375,
+        "bw": 375,
+        "w": 375
+      },
+      {
+        "role": "approver",
+        "label": "工事の登録フォーム",
+        "sw": 375,
+        "bw": 375,
+        "w": 375
+      }
+    ],
+    "screenshots": [
+      "artifacts/browser/revisions-375-viewer.png",
+      "artifacts/browser/revisions-375-approver.png"
+    ],
+    "note": "日本語フォントは試験コンテナに入れていない（文字は代替表示）。幅の判定には影響しない"
+  },
+  "fatal": null
+}

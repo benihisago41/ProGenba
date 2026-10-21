@@ -18,8 +18,9 @@ import {
   setUnauthorizedHandler,
 } from "./auth";
 import { LoginView } from "./LoginView";
+import { RevisionsView } from "./RevisionsView";
 
-type ActiveTab = "cockpit" | "easy-input";
+type ActiveTab = "cockpit" | "easy-input" | "revisions";
 
 export type { EasyCostInputProps };
 
@@ -215,6 +216,14 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps> = ({ session, onLogout }
             </button>
             <button
               type="button"
+              className={`nav-tab-btn ${activeTab === "revisions" ? "active" : ""}`}
+              aria-current={activeTab === "revisions" ? "page" : undefined}
+              onClick={() => setActiveTab("revisions")}
+            >
+              📝 予算・発注
+            </button>
+            <button
+              type="button"
               className="nav-tab-btn"
               onClick={() => {
                 void fetchCockpitAndLookups();
@@ -270,7 +279,10 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps> = ({ session, onLogout }
       ) : null}
 
       <main className="app-main">
-        {isLoading ? (
+        {activeTab === "revisions" ? (
+          // 予算・発注タブは閲覧権限以上で表示（工事が0件でも工事の登録ができるよう、コックピットの状態に依存しない）
+          <RevisionsView session={session} onDataChanged={handleRegistered} />
+        ) : isLoading ? (
           <section className="card state-box" aria-live="polite">
             <p
               style={{
