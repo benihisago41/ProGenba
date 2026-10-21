@@ -141,6 +141,17 @@ unset PW
 
 health・login・logout 以外は要ログイン（未認証401 `UNAUTHORIZED`、権限不足・会社越境403 `FORBIDDEN`）。取得APIの会社コード `company_code` は省略時ログイン中の会社です。コックピットは `project_code` と `branch_code` でも絞り込めます。登録成功は201と伝票番号・警告一覧、業務入力不正は422、対象不存在は404、発注履歴の競合は409です。
 
+## CI
+
+GitHub Actions（`.github/workflows/ci.yml`）が、pull request と main への push で次を実行します。
+
+| ジョブ | 内容 |
+|---|---|
+| Anchor Audit | アンカー4ファイルが `artifacts/anchor-hashes.json` のSHA256と一致すること |
+| Backend Test | `cargo test --locked`（Rust 1.80） |
+| Frontend Build | `npm ci` → `npm run typecheck` → `npm run build` |
+| Auth Integration | `scripts/test_auth.ps1`（専用Composeプロジェクトで2社×3役割・既存DBへの起動時移行。結果JSONはジョブの成果物） |
+
 ## 検証と制約
 
 `scripts/verify_gate.ps1 -Session 1..5` が契約改変・禁止パターン・各段階の試験を検査します。検証結果は `artifacts/` に記録します。API受入試験は検証専用DBへ試験用レコードを作成・削除するため、実データがある環境では実行しないでください。認証の結合試験は `pwsh -File scripts/test_auth.ps1` です。専用のComposeプロジェクト `progenba-authtest`（ポート18081、別ボリューム、DBパスワードと試験用利用者のパスワードは実行ごとに乱数）を作成し、`scripts/test_api.mjs`（ログイン対応版）と `scripts/test_auth.mjs` を実行して結果を `artifacts/acceptance-api-auth.json`・`artifacts/auth-acceptance.json` に書き、最後に `docker compose -p progenba-authtest down -v --rmi local` でその専用環境だけを削除します。稼働中の `progenba` プロジェクトには触れません。

@@ -1,0 +1,108 @@
+# CI: アンカー監査・バックエンド単体試験・画面ビルド・認証結合試験
+# 土台は copilot/ci-cl-setup の案（Backend Test / Frontend Build）。認証導入後の構成に合わせて拡張した。
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  anchor-audit:
+    name: Anchor Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # アンカー4ファイル（契約・スキーマ・型）が artifacts/anchor-hashes.json のSHA256と一致すること
+      - name: Verify anchor hashes
+        shell: pwsh
+        run: |
+          $bad = @()
+          foreach ($a in (Get-Content artifacts/anchor-hashes.json -Raw | ConvertFrom-Json)) {
+            if ((Get-FileHash -LiteralPath $a.path -Algorithm SHA256).Hash -ne $a.sha256) { $bad += $a.path }
+          }
+          if ($bad) { Write-Error "アンカーが改変されています: $($bad -join ', ')"; exit 1 }
+          Write-Host 'anchors 4/4'
+
+  backend-test:
+    name: Backend Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.80.0
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: backend
+
+      # 002_auth.sql を include_str! で埋め込むため、リポジトリ全体のチェックアウトが前提
+      - name: Run cargo test
+        run: cargo test --locked
+
+  frontend-build:
+    name: Frontend Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+  auth-integration:
+    name: Auth Integration
+    runs-on: ubuntu-latest
+    needs: [backend-test, frontend-build]
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 専用Composeプロジェクト progenba-authtest を作り、2社×3役割の試験と既存DBへの起動時移行を検証して削除する
+      - name: Run auth integration tests
+        shell: pwsh
+        run: ./scripts/test_auth.ps1
+
+      - name: Upload acceptance results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: auth-acceptance
+          path: |
+            artifacts/auth-acceptance.json
+            artifacts/acceptance-api-auth.json
+          if-no-files-found: ignore
