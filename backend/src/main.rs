@@ -17,22 +17,37 @@ async fn main() {
         }
     };
 
+    // 002_auth.sql（冪等）を適用する。既存DB（initdb 済みボリューム）でも認証テーブルを用意するため。
+    // 失敗時は詳細（接続文字列等）を出さずに終了する。
+    let pool = connect_pool(&database_url).await;
+    if api::auth::apply_auth_migration(&pool).await.is_err() {
+        tracing::error!("認証スキーマ（002_auth.sql）の適用に失敗しました");
+        std::process::exit(1);
+    }
+
+    // 管理用サブコマンド: add-user（パスワードは標準入力から受け取り、引数・ログに出さない）
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    if let Some(cmd) = args.first() {
+        if cmd == "add-user" {
+            match api::auth::run_add_user(&pool, &args[1..]).await {
+                Ok(msg) => {
+                    println!("{}", msg);
+                    std::process::exit(0);
+                }
+                Err(msg) => {
+                    eprintln!("エラー: {}", msg);
+                    std::process::exit(2);
+                }
+            }
+        }
+        eprintln!("不明なサブコマンドです（利用可能: add-user）");
+        std::process::exit(2);
+    }
+
     let port: u16 = std::env::var("PORT")
         .ok()
         .and_then(|s| s.parse().ok())
         .unwrap_or(8080);
-
-    let pool = match PgPoolOptions::new()
-        .max_connections(10)
-        .connect(&database_url)
-        .await
-    {
-        Ok(p) => p,
-        Err(_) => {
-            tracing::error!("データベースへの接続に失敗しました");
-            std::process::exit(1);
-        }
-    };
 
     let app = api::router(pool);
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
@@ -49,5 +64,19 @@ async fn main() {
     if let Err(e) = axum::serve(listener, app).await {
         tracing::error!("サーバー実行中にエラーが発生しました: {}", e);
         std::process::exit(1);
+    }
+}
+
+async fn connect_pool(database_url: &str) -> sqlx::PgPool {
+    match PgPoolOptions::new()
+        .max_connections(10)
+        .connect(database_url)
+        .await
+    {
+        Ok(p) => p,
+        Err(_) => {
+            tracing::error!("データベースへの接続に失敗しました");
+            std::process::exit(1);
+        }
     }
 }

@@ -1,4 +1,5 @@
 pub mod actual_costs;
+pub mod auth;
 pub mod projects;
 
 use axum::{
@@ -16,11 +17,15 @@ use tower_http::services::{ServeDir, ServeFile};
 #[derive(Clone)]
 pub struct AppState {
     pub pool: PgPool,
+    /// セッションCookieに Secure 属性を付けるか（SESSION_COOKIE_SECURE、既定 off）
+    pub cookie_secure: bool,
 }
 
 #[derive(Debug)]
 pub enum ApiError {
     BadRequest(String),
+    Unauthorized(String),
+    Forbidden(String),
     NotFound(String),
     Conflict(String),
     Unprocessable(String),
@@ -38,6 +43,8 @@ impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let (status, code, message) = match self {
             Self::BadRequest(msg) => (StatusCode::BAD_REQUEST, "BAD_REQUEST", msg),
+            Self::Unauthorized(msg) => (StatusCode::UNAUTHORIZED, "UNAUTHORIZED", msg),
+            Self::Forbidden(msg) => (StatusCode::FORBIDDEN, "FORBIDDEN", msg),
             Self::NotFound(msg) => (StatusCode::NOT_FOUND, "NOT_FOUND", msg),
             Self::Conflict(msg) => (StatusCode::CONFLICT, "CONFLICT", msg),
             Self::Unprocessable(msg) => (
@@ -97,14 +104,21 @@ async fn api_not_found(uri: Uri) -> Response {
 }
 
 pub fn router(pool: PgPool) -> Router {
-    let state = AppState { pool };
+    let state = AppState {
+        pool,
+        cookie_secure: auth::cookie_secure_from_env(),
+    };
 
     let static_dir = std::env::var("STATIC_DIR").unwrap_or_else(|_| "./static".to_string());
     let index_file = PathBuf::from(&static_dir).join("index.html");
     let serve_dir = ServeDir::new(&static_dir).not_found_service(ServeFile::new(index_file));
 
     Router::new()
+        // 認証不要: health と login/logout。それ以外の業務APIは AuthContext で 401/403 を判定する。
         .route("/api/v1/health", get(health_check))
+        .route("/api/v1/auth/login", post(auth::login))
+        .route("/api/v1/auth/logout", post(auth::logout))
+        .route("/api/v1/auth/me", get(auth::me))
         .route("/api/v1/cockpit", get(projects::get_cockpit))
         .route("/api/v1/lookups", get(projects::get_lookups))
         .route(

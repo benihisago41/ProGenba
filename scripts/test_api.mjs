@@ -5,15 +5,38 @@ import { writeFileSync } from 'node:fs';
 const base = process.env.SIRIUS_TEST_URL || 'http://127.0.0.1:8080';
 const container = process.env.SIRIUS_TEST_DB_CONTAINER || 'progenba-db-1';
 const dbUser = process.env.SIRIUS_TEST_DB_USER || 'sirius';
-const label = execFileSync('docker', ['inspect', '-f', '{{index .Config.Labels "ai.agent"}}', container], { encoding:'utf8' }).trim();
-assert.equal(label, 'codex', '専用の検証DBだけを対象にしてください');
-const db = sql => execFileSync('docker', ['exec','-i',container,'psql','-X','-U',dbUser,'-d','sirius_reborn','-At','-v','ON_ERROR_STOP=1'], {input:sql,encoding:'utf8'}).trim();
+// SIRIUS_TEST_PSQL=1: scripts/test_auth.ps1 が作る専用Composeネットワーク内のコンテナから psql（PG*環境変数）で接続する。
+// それ以外は従来どおり docker exec で専用DBコンテナへ接続する（稼働中の progenba プロジェクトは拒否）。
+const usePsql = process.env.SIRIUS_TEST_PSQL === '1';
+if (!usePsql) {
+  const label = execFileSync('docker', ['inspect', '-f', '{{index .Config.Labels "ai.agent"}}', container], { encoding:'utf8' }).trim();
+  assert.equal(label, 'codex', '専用の検証DBだけを対象にしてください');
+  const project = execFileSync('docker', ['inspect', '-f', '{{index .Config.Labels "com.docker.compose.project"}}', container], { encoding:'utf8' }).trim();
+  assert.notEqual(project, 'progenba', '稼働中の progenba プロジェクトのDBでは実行しないでください');
+}
+const db = sql => (usePsql
+  ? execFileSync('psql', ['-X','-At','-v','ON_ERROR_STOP=1'], {input:sql,encoding:'utf8'})
+  : execFileSync('docker', ['exec','-i',container,'psql','-X','-U',dbUser,'-d','sirius_reborn','-At','-v','ON_ERROR_STOP=1'], {input:sql,encoding:'utf8'})).trim();
+// 過去の証拠 artifacts/acceptance-api.json は上書きしない
+const outputPath = process.env.SIRIUS_TEST_OUTPUT || 'artifacts/acceptance-api-auth.json';
+// 認証導入後: 試験用の承認権限利用者（scripts/test_auth.ps1 が試験中だけ作成）でログインし Cookie を付ける
+async function loginCookie(company) {
+  const password = process.env[`AUTHTEST_PW_${company}_APPROVER`];
+  assert.ok(password, `AUTHTEST_PW_${company}_APPROVER が未設定です`);
+  const r = await fetch(base+'/api/v1/auth/login', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({company_code:company,user_id:'authtest-approver',password})});
+  assert.equal(r.status, 200, '試験用利用者でログインできません');
+  const m = /progenba_session=([0-9a-f]{64})/.exec(r.headers.get('set-cookie') || '');
+  assert.ok(m, 'セッションCookieがありません');
+  return `progenba_session=${m[1]}`;
+}
+const cookie0000 = await loginCookie('0000');
+const cookie9001 = await loginCookie('9001');
 const tests = [];
 const documents = [];
 const created={base:false,orderRevision:false,budgetRevision:false,tenant:false,trigger:false,lockedOrders:[]};
 const tenantTables=['business_partners','work_types','cost_elements','quick_item_templates','project_masters','project_branches','execution_budgets','execution_budget_details','subcontract_orders','construction_equipment_masters'];
-async function request(path, body, expected=200) {
-  const response = await fetch(base+path, body === undefined ? undefined : {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+async function request(path, body, expected=200, cookie=cookie0000) {
+  const response = await fetch(base+path, body === undefined ? {headers:{Cookie:cookie}} : {method:'POST',headers:{'Content-Type':'application/json',Cookie:cookie},body:JSON.stringify(body)});
   const data = await response.json();
   assert.equal(response.status, expected, JSON.stringify(data));
   if (expected === 201) { assert.match(data.document_no,/^\d{12}$/); assert.ok(Array.isArray(data.warnings)); }
@@ -26,8 +49,8 @@ const cost={company_code:'0000',project_code:'PRJ-2026-A',branch_code:'000',occu
 const report={company_code:'0000',project_code:'PRJ-2026-A',branch_code:'000',work_date:'2026-07-01',employee_code:'EMP-0001',work_type_code:'002000100010',work_hours:'4.000'};
 const equip={company_code:'0000',equipment_code:'EQP-001',dest_project_code:'PRJ-2026-A',dest_branch_code:'000',work_type_code:'001000100010',movement_date:'2026-07-01',quantity:'2.000',usage_days:3,freight_fee:1000,maintenance_fee:200};
 const progress={company_code:'0000',order_number:'ORD-2026-001',order_history_no:0,assessment_year_month:'202607',curr_assessed_amount_tax_ex:3000000,fixed_deductions:5000,chargeback_offset:0};
-async function register(kind, body) {
-  const r=await request('/api/v1/costs/'+kind,body,201);
+async function register(kind, body, cookie=cookie0000) {
+  const r=await request('/api/v1/costs/'+kind,body,201,cookie);
   const table={'subcontract-progress':'progress_assessments','direct-entry':'direct_cost_entries','daily-report':'site_daily_reports','equipment-movement':'equipment_site_movements'}[kind];
   const col={'subcontract-progress':'assessment_no','direct-entry':'entry_no','daily-report':'report_no','equipment-movement':'movement_slip_no'}[kind];
   documents.push({table,col,no:r.document_no,company:body.company_code}); return r;
@@ -39,7 +62,8 @@ try {
     assert.equal(x.forecast_gross_profit,12000000); assert.equal(typeof x.forecast_profit_rate,'string');
     const look=await request('/api/v1/lookups?company_code=0000'); assert.equal(look.quick_templates.length,5);
     assert.equal(typeof look.subcontract_orders[0].safety_assoc_rate_den,'string'); assert.equal(look.employees.length,2);
-    assert.deepEqual(await request('/api/v1/cockpit?company_code=9001'),[]);
+    // 認証導入後: 0000 のセッションで 9001 を指定すると会社越境として 403
+    await request('/api/v1/cockpit?company_code=9001',undefined,403);
   });
   await check('subcontract-tax-deductions-and-cost',async()=>{
     const r=await register('subcontract-progress',progress);
@@ -62,8 +86,8 @@ try {
     await request('/api/v1/costs/subcontract-progress',{...progress,curr_assessed_amount_tax_ex:8000000},422);
     await request('/api/v1/costs/subcontract-progress',{...progress,assessment_year_month:'202613'},422);
     await request('/api/v1/costs/subcontract-progress',{...progress,curr_assessed_amount_tax_ex:1,fixed_deductions:10000},422);
-    const noCompany=await fetch(base+'/api/v1/costs/direct-entry',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...cost,company_code:'9001'})});
-    assert.ok([404,422].includes(noCompany.status));
+    const noCompany=await fetch(base+'/api/v1/costs/direct-entry',{method:'POST',headers:{'Content-Type':'application/json',Cookie:cookie0000},body:JSON.stringify({...cost,company_code:'9001'})});
+    assert.equal(noCompany.status,403);
     assert.equal((await main()).actual_occurred_cost,3013221);
   });
   db(`BEGIN;
@@ -111,8 +135,8 @@ try {
     for(const table of tenantTables) assert.equal(Number(db(`SELECT count(*) FROM ${table} WHERE company_code='9001';`)),0,'試験会社の既存データが存在します');
     db('BEGIN;'+tenantTables.map(table=>`INSERT INTO ${table} SELECT (jsonb_populate_record(NULL::${table},to_jsonb(t)||'{"company_code":"9001"}'::jsonb)).* FROM ${table} t WHERE company_code='0000';`).join('\n')+'COMMIT;');
     created.tenant=true;
-    const before=await main(); await register('direct-entry',{...cost,company_code:'9001'});
-    const other=(await request('/api/v1/cockpit?company_code=9001&branch_code=000'))[0];
+    const before=await main(); await register('direct-entry',{...cost,company_code:'9001'},cookie9001);
+    const other=(await request('/api/v1/cockpit?company_code=9001&branch_code=000',undefined,200,cookie9001))[0];
     assert.equal(other.actual_occurred_cost,101); assert.equal(other.actual_breakdown.subcontract_cost,0);
     assert.equal((await main()).actual_occurred_cost,before.actual_occurred_cost);
   });
@@ -123,9 +147,9 @@ try {
     const before=await main(); await request('/api/v1/costs/direct-entry',cost,500);
     assert.equal((await main()).actual_occurred_cost,before.actual_occurred_cost);
   });
-  writeFileSync('artifacts/acceptance-api.json',JSON.stringify({passed:true,base,database_container:container,tests},null,2));
+  writeFileSync(outputPath,JSON.stringify({passed:true,base,database_container:usePsql?'psql:'+(process.env.PGHOST||''):container,authenticated:true,tests},null,2));
 } catch(error) {
-  writeFileSync('artifacts/acceptance-api.json',JSON.stringify({passed:false,tests,error:String(error)},null,2)); throw error;
+  writeFileSync(outputPath,JSON.stringify({passed:false,tests,error:String(error)},null,2)); throw error;
 } finally {
   if(created.trigger) db('DROP TRIGGER codex_test_reject ON direct_cost_entries; DROP FUNCTION codex_test_reject_insert();');
   for(const {table,col,no,company} of documents.reverse()) db(`DELETE FROM ${table} WHERE company_code='${company}' AND ${col}='${no}';`);

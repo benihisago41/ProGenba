@@ -15,6 +15,7 @@ import {
   SubcontractOrderSummaryDto,
   YenAmount,
 } from "./bindings";
+import { apiFetch } from "./auth";
 
 export interface EasyCostInputProps {
   projects: ProjectCostCockpitDto[];
@@ -230,7 +231,7 @@ export const EasyCostInput: React.FC<EasyCostInputProps> = ({
       setLookupsError(null);
       try {
         const params = new URLSearchParams({ company_code: companyCode });
-        const res = await fetch(
+        const res = await apiFetch(
           `${API_ENDPOINTS.MASTER_LOOKUPS}?${params.toString()}`,
           {
             headers: { Accept: "application/json" },
@@ -567,7 +568,7 @@ export const EasyCostInput: React.FC<EasyCostInputProps> = ({
     busyRef.current = true;
     setIsSubmitting(true);
     try {
-      const res = await fetch(API_ENDPOINTS.SUBMIT_SUBCONTRACT_PROGRESS, {
+      const res = await apiFetch(API_ENDPOINTS.SUBMIT_SUBCONTRACT_PROGRESS, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -768,7 +769,7 @@ export const EasyCostInput: React.FC<EasyCostInputProps> = ({
     busyRef.current = true;
     setIsSubmitting(true);
     try {
-      const res = await fetch(API_ENDPOINTS.SUBMIT_DIRECT_COST, {
+      const res = await apiFetch(API_ENDPOINTS.SUBMIT_DIRECT_COST, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -948,7 +949,7 @@ export const EasyCostInput: React.FC<EasyCostInputProps> = ({
     busyRef.current = true;
     setIsSubmitting(true);
     try {
-      const res = await fetch(API_ENDPOINTS.SUBMIT_DAILY_REPORT, {
+      const res = await apiFetch(API_ENDPOINTS.SUBMIT_DAILY_REPORT, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1125,7 +1126,7 @@ export const EasyCostInput: React.FC<EasyCostInputProps> = ({
     busyRef.current = true;
     setIsSubmitting(true);
     try {
-      const res = await fetch(API_ENDPOINTS.SUBMIT_EQUIPMENT_MOVEMENT, {
+      const res = await apiFetch(API_ENDPOINTS.SUBMIT_EQUIPMENT_MOVEMENT, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

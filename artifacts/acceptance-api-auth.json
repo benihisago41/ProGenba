@@ -1,0 +1,18 @@
+{
+  "passed": true,
+  "base": "http://app:8080",
+  "database_container": "psql:db",
+  "authenticated": true,
+  "tests": [
+    "readiness-and-json-contract",
+    "subcontract-tax-deductions-and-cost",
+    "materials-expenses-labor-equipment-and-independent-sums",
+    "invalid-inputs-and-cross-company-references",
+    "completion-guards-warnings-and-unapproved-revisions",
+    "concurrent-assessments-use-serialized-cumulative-tax",
+    "stale-order-revision-is-rejected-and-history-not-double-counted",
+    "latest-approved-budget-is-selected-once",
+    "two-existing-companies-with-identical-business-codes-remain-isolated",
+    "insert-failure-rolls-back"
+  ]
+}

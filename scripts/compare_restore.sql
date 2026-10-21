@@ -4,7 +4,10 @@
 SELECT format(
   'SELECT %L, %L, count(*), md5(coalesce(string_agg(t::text, E''\n'' ORDER BY t::text), '''')) FROM %I t',
   'table', tablename, tablename)
-FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename
+-- app_sessions（ログインセッション）は除外する。セッションは一時的な状態で、API利用のたびに
+-- last_seen_at・expires_at が更新されるため、元DBと復元DBで必ず差分になる。
+-- 利用者（app_users）は業務の一部として照合対象に残す。
+FROM pg_tables WHERE schemaname = 'public' AND tablename <> 'app_sessions' ORDER BY tablename
 \gexec
 -- 制約（主キー・外部キー・CHECK）
 SELECT 'constraint', conrelid::regclass::text || '.' || conname, 1, md5(pg_get_constraintdef(oid))

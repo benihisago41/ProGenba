@@ -16,7 +16,7 @@ use sirius_reborn_backend::domain::{
 use sqlx::Row;
 use std::collections::{BTreeMap, HashMap};
 
-use crate::api::{ApiError, AppState};
+use crate::api::{auth::AuthContext, ApiError, AppState};
 
 #[derive(Debug, Deserialize)]
 pub struct CockpitQuery {
@@ -35,16 +35,6 @@ struct WtAccum {
     budget: i64,
     ordered: i64,
     actual: i64,
-}
-
-fn normalize_company(code: Option<&str>) -> Result<String, ApiError> {
-    let c = code.map(str::trim).filter(|s| !s.is_empty()).unwrap_or("0000");
-    if c.len() != 4 || !c.is_ascii() {
-        return Err(ApiError::Unprocessable(
-            "company_codeは4文字で指定してください".to_string(),
-        ));
-    }
-    Ok(c.to_string())
 }
 
 fn checked_add_yen(a: i64, b: i64) -> Result<i64, ApiError> {
@@ -93,9 +83,11 @@ fn calc_percent_rate(numerator: i64, denominator: i64) -> Result<Rate, ApiError>
 
 pub async fn get_cockpit(
     State(state): State<AppState>,
+    auth: AuthContext,
     Query(q): Query<CockpitQuery>,
 ) -> Result<Json<Vec<ProjectCostCockpitDto>>, ApiError> {
-    let company_code = normalize_company(q.company_code.as_deref())?;
+    // 会社境界: クライアント指定値は照合のみ。問い合わせは常にセッションの会社で行う
+    let company_code = auth.resolve_company(q.company_code.as_deref())?;
     let project_filter = q
         .project_code
         .as_deref()
@@ -443,9 +435,11 @@ pub async fn get_cockpit(
 
 pub async fn get_lookups(
     State(state): State<AppState>,
+    auth: AuthContext,
     Query(q): Query<LookupsQuery>,
 ) -> Result<Json<LookupsDto>, ApiError> {
-    let company_code = normalize_company(q.company_code.as_deref())?;
+    // 会社境界: クライアント指定値は照合のみ。問い合わせは常にセッションの会社で行う
+    let company_code = auth.resolve_company(q.company_code.as_deref())?;
 
     // 1. quick_templates
     let tpl_rows = sqlx::query(

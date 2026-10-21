@@ -7,12 +7,21 @@ import {
 } from "./bindings";
 import { CockpitView } from "./CockpitView";
 import { EasyCostInput, EasyCostInputProps } from "./EasyCostInput";
+import {
+  apiFetch,
+  canRegisterCompleted,
+  canRegisterCost,
+  fetchMe,
+  logout,
+  MeResponse,
+  roleLabel,
+  setUnauthorizedHandler,
+} from "./auth";
+import { LoginView } from "./LoginView";
 
 type ActiveTab = "cockpit" | "easy-input";
 
 export type { EasyCostInputProps };
-
-const DEFAULT_COMPANY_CODE = "0000";
 
 async function parseApiError(res: Response): Promise<string> {
   try {
@@ -26,8 +35,87 @@ async function parseApiError(res: Response): Promise<string> {
   return `サーバー通信エラーが発生しました（HTTP ${res.status}）`;
 }
 
+// セッション確認中は undefined、未ログインは null
+type SessionState = MeResponse | null | undefined;
+
 export const App: React.FC = () => {
-  const [companyCode] = useState<string>(DEFAULT_COMPANY_CODE);
+  const [session, setSession] = useState<SessionState>(undefined);
+  const [loginNotice, setLoginNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    // 業務APIが 401 を返したらログイン画面へ戻す
+    setUnauthorizedHandler(() => {
+      setLoginNotice("ログインの有効期限が切れました。再度ログインしてください。");
+      setSession(null);
+    });
+    let cancelled = false;
+    fetchMe()
+      .then((me) => {
+        if (!cancelled) setSession(me);
+      })
+      .catch(() => {
+        if (!cancelled) setSession(null);
+      });
+    return () => {
+      cancelled = true;
+      setUnauthorizedHandler(null);
+    };
+  }, []);
+
+  const handleLogout = useCallback(async () => {
+    try {
+      await logout();
+    } catch {
+      // 通信失敗時も画面はログイン画面へ戻す（サーバー側は無操作8時間で失効）
+    } finally {
+      setLoginNotice("ログアウトしました。");
+      setSession(null);
+    }
+  }, []);
+
+  if (session === undefined) {
+    return (
+      <div className="app-shell">
+        <main className="app-main">
+          <section className="card state-box" aria-live="polite">
+            <p style={{ margin: 0 }}>ログイン状態を確認しています...</p>
+          </section>
+        </main>
+      </div>
+    );
+  }
+
+  if (session === null) {
+    return (
+      <LoginView
+        notice={loginNotice}
+        onLoggedIn={(me) => {
+          setLoginNotice(null);
+          setSession(me);
+        }}
+      />
+    );
+  }
+
+  // 利用者が変わったら画面状態を作り直す
+  return (
+    <AuthenticatedApp
+      key={`${session.company_code}:${session.user_id}`}
+      session={session}
+      onLogout={handleLogout}
+    />
+  );
+};
+
+interface AuthenticatedAppProps {
+  session: MeResponse;
+  onLogout: () => Promise<void>;
+}
+
+const AuthenticatedApp: React.FC<AuthenticatedAppProps> = ({ session, onLogout }) => {
+  // 会社コードはサーバーのセッション（/auth/me）から取得した値のみを使う
+  const companyCode = session.company_code;
+  const mayRegister = canRegisterCost(session.role);
   const [activeTab, setActiveTab] = useState<ActiveTab>("cockpit");
 
   const [projects, setProjects] = useState<ProjectCostCockpitDto[]>([]);
@@ -44,10 +132,10 @@ export const App: React.FC = () => {
       try {
         const query = `?company_code=${encodeURIComponent(companyCode)}`;
         const [cockpitRes, lookupsRes] = await Promise.all([
-          fetch(`${API_ENDPOINTS.COCKPIT}${query}`, {
+          apiFetch(`${API_ENDPOINTS.COCKPIT}${query}`, {
             headers: { Accept: "application/json" },
           }),
-          fetch(`${API_ENDPOINTS.MASTER_LOOKUPS}${query}`, {
+          apiFetch(`${API_ENDPOINTS.MASTER_LOOKUPS}${query}`, {
             headers: { Accept: "application/json" },
           }),
         ]);
@@ -119,6 +207,9 @@ export const App: React.FC = () => {
               }`}
               aria-current={activeTab === "easy-input" ? "page" : undefined}
               onClick={() => setActiveTab("easy-input")}
+              disabled={!mayRegister}
+              aria-describedby={mayRegister ? undefined : "register-disabled-reason"}
+              title={mayRegister ? undefined : "閲覧権限のため原価登録はできません"}
             >
               ➕ かんたん原価登録（外注出来高・材料・日報・損料）
             </button>
@@ -134,8 +225,49 @@ export const App: React.FC = () => {
               🔄 最新状態に更新
             </button>
           </nav>
+
+          <div
+            className="user-bar"
+            aria-label="ログイン中の利用者"
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              gap: "8px",
+              fontSize: "0.85rem",
+              minWidth: 0,
+            }}
+          >
+            <span style={{ overflowWrap: "anywhere" }}>
+              👤 {session.display_name ?? session.user_id}（会社 {session.company_code}）
+            </span>
+            <span className="kpi-tag" data-role={session.role}>
+              役割：{roleLabel(session.role)}
+            </span>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              style={{ padding: "4px 12px" }}
+              onClick={() => {
+                void onLogout();
+              }}
+            >
+              ログアウト
+            </button>
+          </div>
         </div>
       </header>
+
+      {!mayRegister ? (
+        <p
+          id="register-disabled-reason"
+          className="alert-banner alert-warning"
+          role="note"
+          style={{ margin: "12px auto 0", maxWidth: "1360px", width: "calc(100% - 32px)" }}
+        >
+          閲覧権限のため、原価登録はできません（登録・承認権限の利用者のみ登録できます）。
+        </p>
+      ) : null}
 
       <main className="app-main">
         {isLoading ? (
@@ -194,14 +326,27 @@ export const App: React.FC = () => {
               🔄 再読み込み
             </button>
           </section>
-        ) : activeTab === "cockpit" ? (
+        ) : activeTab === "cockpit" || !mayRegister ? (
           <CockpitView projects={projects} />
         ) : (
-          <EasyCostInput
-            projects={projects}
-            companyCode={companyCode}
-            onRegistered={handleRegistered}
-          />
+          <>
+            {!canRegisterCompleted(session.role) ? (
+              <div
+                className="alert-banner alert-warning"
+                role="note"
+                style={{ marginBottom: "12px" }}
+              >
+                <span>
+                  完成区分が「完成(1)」の工事への登録は承認権限の利用者のみ可能です（登録しようとするとサーバーで拒否されます）。
+                </span>
+              </div>
+            ) : null}
+            <EasyCostInput
+              projects={projects}
+              companyCode={companyCode}
+              onRegistered={handleRegistered}
+            />
+          </>
         )}
       </main>
     </div>

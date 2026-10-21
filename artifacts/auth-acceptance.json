@@ -1,0 +1,123 @@
+{
+  "passed": true,
+  "checked_at": "2026-10-20T23:47:42.595Z",
+  "commit": "68b0aa2672a73360415946c94d428ead136369fd+uncommitted",
+  "environment": {
+    "compose_project": "progenba-authtest",
+    "base": "http://app:8080",
+    "note": "専用 Compose プロジェクトで実行。稼働中の progenba-app-1 / progenba-db-1 は使用していない"
+  },
+  "users": "0000・9001 × viewer/registrar/approver ＋ 0000 のロック・無効化・降格試験用（試験中だけ作成、パスワードは実行ごとに乱数生成し記録しない）",
+  "summary": {
+    "total": 19,
+    "passed": 19,
+    "failed": 0
+  },
+  "tests": [
+    {
+      "name": "health-is-public",
+      "passed": true
+    },
+    {
+      "name": "unauthenticated-requests-are-401",
+      "passed": true
+    },
+    {
+      "name": "login-failures-are-indistinguishable-401",
+      "passed": true
+    },
+    {
+      "name": "login-sets-httponly-strict-cookie-and-me",
+      "passed": true
+    },
+    {
+      "name": "cockpit-values-after-login-match-pre-auth-seed",
+      "passed": true
+    },
+    {
+      "name": "viewer-cannot-register-any-of-4-methods-403",
+      "passed": true
+    },
+    {
+      "name": "registrar-registers-uncompleted-201-all-4-methods",
+      "passed": true
+    },
+    {
+      "name": "registrar-on-completed-1-is-403-with-reason-and-not-written",
+      "passed": true
+    },
+    {
+      "name": "approver-on-completed-1-is-201-with-warning",
+      "passed": true
+    },
+    {
+      "name": "completed-2-and-3-are-422-even-for-approver",
+      "passed": true
+    },
+    {
+      "name": "cross-company-get-and-post-are-403-without-9001-data",
+      "passed": true
+    },
+    {
+      "name": "omitted-company-get-returns-only-own-company",
+      "passed": true
+    },
+    {
+      "name": "state-changing-post-requires-json-content-type",
+      "passed": true
+    },
+    {
+      "name": "logout-deletes-server-session-and-cookie-is-rejected",
+      "passed": true
+    },
+    {
+      "name": "expired-session-is-401-and-activity-slides-expiry",
+      "passed": true
+    },
+    {
+      "name": "consecutive-failures-lock-user-temporarily",
+      "passed": true
+    },
+    {
+      "name": "deactivated-user-session-and-login-are-401",
+      "passed": true
+    },
+    {
+      "name": "add-user-update-demotion-revokes-existing-sessions",
+      "passed": true
+    },
+    {
+      "name": "static-bundle-serves-login-screen",
+      "passed": true
+    }
+  ],
+  "legacy_api_acceptance": {
+    "file": "artifacts/acceptance-api-auth.json",
+    "passed": true,
+    "tests": 10,
+    "error": null
+  },
+  "startup_migration_on_existing_db": {
+    "initdb_auth_tables": 2,
+    "auth_tables_after_drop": 0,
+    "business_tables_compared": 14,
+    "business_unchanged_by_drop": true,
+    "restart1": {
+      "restarted": true,
+      "healthy": true,
+      "auth_tables": 2,
+      "auth_schema_objects": 13,
+      "auth_schema_same_as_initdb": true,
+      "business_digest_unchanged": true
+    },
+    "restart2_idempotent": {
+      "restarted": true,
+      "healthy": true,
+      "auth_tables": 2,
+      "auth_schema_same_as_initdb": true,
+      "business_digest_unchanged": true
+    },
+    "passed": true
+  },
+  "fatal": null
+}
