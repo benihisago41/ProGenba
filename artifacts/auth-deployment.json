@@ -1,0 +1,65 @@
+{
+  "passed": true,
+  "deployed_at": "2026-10-21T03:33:37Z",
+  "source_commit": "e5c4275",
+  "environment": "running progenba Compose project on the Windows PC recorded in fresh-start.json physical_other_pc_verification",
+  "steps": [
+    "backup live DB with scripts/backup_db.ps1",
+    "build new app image with docker compose build app while the old app kept running",
+    "rehearse: restore the backup into an isolated DB and start the new image against it (scripts/restore_db.ps1 -Cleanup)",
+    "record full-row digests of the 14 business tables on the live DB",
+    "switch with docker compose up -d --wait (progenba_pgdata volume reused)",
+    "compare business table digests and check auth enforcement"
+  ],
+  "backup": {
+    "file": "%OneDrive%\\ProGenba-backups\\progenba_20261021T032945Z.dump",
+    "bytes": 45759,
+    "sha256": "4e59286c247613a5b3d2ef12bd522db6c3301946e538abd9771a5b76985f9038",
+    "seconds": 1.9
+  },
+  "images": {
+    "previous_app_image": "sha256:a8812e9305b6",
+    "deployed_app_image": "sha256:bdda63af522a1421fdd540bf4d64f21882023a7477c6d5b044cfc67bc313808e",
+    "image_build_seconds": 139
+  },
+  "rehearsal": {
+    "checked_at": "2026-10-21T03:33:15Z",
+    "passed": true,
+    "restore_seconds": 4.9,
+    "business_tables_identical": true,
+    "schema_objects_compared": 82,
+    "auth_tables_before_app_start": 0,
+    "auth_tables_after_app_start": 2,
+    "restored_cockpit_http_status": 200,
+    "restored_cockpit_totals": {
+      "company_code": "0000",
+      "branches": 2,
+      "execution_budget_total": 41500000,
+      "actual_cost_total": 37000,
+      "forecast_gross_profit_total": 13500000
+    }
+  },
+  "first_rehearsal_attempt": {
+    "passed": false,
+    "cause": "restore_db.ps1 (auth version) was run with the old pre-auth progenba-app:latest image, which does not create app_users, so creating the temporary verification session failed",
+    "business_table_comparison_before_failure": "identical",
+    "assets_cleaned_up": true,
+    "resolution": "built the new image first and reran the rehearsal; this only happens during the transition from the pre-auth image"
+  },
+  "post_deploy_checks": {
+    "business_tables_compared": 14,
+    "business_table_digest_diff_lines": 0,
+    "auth_tables_created": ["app_sessions", "app_users"],
+    "app_users_count": 0,
+    "health_http_status": 200,
+    "unauthenticated_me_status": 401,
+    "unauthenticated_cockpit_status": 401,
+    "unauthenticated_cost_post_status": 401,
+    "browser_shows_login_screen": true
+  },
+  "pending": [
+    "create the first user with scripts/add_user.ps1 (done by the owner; password entered interactively and not recorded)"
+  ],
+  "rollback": "stop app, restore progenba_20261021T032945Z.dump per artifacts/BACKUP_RESTORE.md, and run the previous image; the auth tables do not affect business tables",
+  "other_containers_or_volumes_modified": false
+}
