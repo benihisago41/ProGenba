@@ -10,7 +10,7 @@ use sirius_reborn_backend::domain::types::{
 };
 use sqlx::{Postgres, Row, Transaction};
 
-use crate::api::{ApiError, AppJson, AppState};
+use crate::api::{auth::AuthContext, ApiError, AppJson, AppState};
 
 #[derive(Clone, Copy)]
 pub(crate) enum SlipKind {
@@ -197,6 +197,7 @@ pub(crate) fn ensure_decimal_fits_yen(val: Decimal, label: &str) -> Result<i64, 
 
 pub(crate) async fn guard_project_branch(
     tx: &mut Transaction<'_, Postgres>,
+    auth: &AuthContext,
     company_code: &str,
     project_code: &str,
     branch_code: &str,
@@ -231,6 +232,12 @@ pub(crate) async fn guard_project_branch(
             "完成区分がロック済（{}）のため、新規の原価登録はできません",
             status_str.trim()
         )));
+    }
+
+    // 区分2/3は全役割で 422（上で判定済み）。区分1は承認権限のみ登録可、登録権限は 403。
+    // Err で戻ると呼出側のトランザクションは commit されずロールバックされる。
+    if status == CompletionStatus::Completed {
+        auth.require_completed_registration()?;
     }
 
     let mut warnings = Vec::new();
@@ -309,9 +316,13 @@ pub(crate) async fn allocate_slip_no(
 /// POST /api/v1/costs/subcontract-progress
 pub async fn submit_subcontract_progress(
     State(state): State<AppState>,
+    auth: AuthContext,
     AppJson(req): AppJson<EasySubcontractProgressRequest>,
 ) -> Result<(StatusCode, Json<CostRegistrationResponse>), ApiError> {
+    // 権限（registrar 以上）→ 形式 → 会社境界の順に判定。以降の問い合わせはセッションの会社のみを使う
+    auth.require_cost_registration()?;
     validate_company_code(&req.company_code)?;
+    let company_code = auth.resolve_company(Some(&req.company_code))?;
     if req.order_number.trim().is_empty() || req.order_number.len() > 12 {
         return Err(ApiError::Unprocessable(
             "注文番号は1〜12文字で指定してください".to_string(),
@@ -332,7 +343,7 @@ pub async fn submit_subcontract_progress(
     // 会社＋注文番号単位の排他ロック
     let order_lock_key = format!(
         "{}:subcontract_order:{}",
-        req.company_code, req.order_number
+        company_code, req.order_number
     );
     sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))")
         .bind(&order_lock_key)
@@ -361,7 +372,7 @@ pub async fn submit_subcontract_progress(
         FOR UPDATE
         "#,
     )
-    .bind(&req.company_code)
+    .bind(&company_code)
     .bind(&req.order_number)
     .fetch_optional(&mut *tx)
     .await?
@@ -399,7 +410,7 @@ pub async fn submit_subcontract_progress(
         WHERE company_code = $1 AND partner_code = $2
         "#,
     )
-    .bind(&req.company_code)
+    .bind(&company_code)
     .bind(&subcontractor_code)
     .fetch_optional(&mut *tx)
     .await?
@@ -422,7 +433,8 @@ pub async fn submit_subcontract_progress(
     // 工事枝番の完成区分・工期ガード
     let warnings = guard_project_branch(
         &mut tx,
-        &req.company_code,
+        &auth,
+        &company_code,
         &project_code,
         &branch_code,
         closing_date,
@@ -439,7 +451,7 @@ pub async fn submit_subcontract_progress(
         WHERE company_code = $1 AND order_number = $2
         "#,
     )
-    .bind(&req.company_code)
+    .bind(&company_code)
     .bind(&req.order_number)
     .fetch_one(&mut *tx)
     .await?;
@@ -477,7 +489,7 @@ pub async fn submit_subcontract_progress(
         Decimal::ZERO
     };
 
-    let assessment_no = allocate_slip_no(&mut tx, &req.company_code, SlipKind::Assessment).await?;
+    let assessment_no = allocate_slip_no(&mut tx, &company_code, SlipKind::Assessment).await?;
 
     sqlx::query(
         r#"
@@ -508,7 +520,7 @@ pub async fn submit_subcontract_progress(
         )
         "#,
     )
-    .bind(&req.company_code)
+    .bind(&company_code)
     .bind(&assessment_no)
     .bind(&req.order_number)
     .bind(latest_history_no)
@@ -545,9 +557,13 @@ pub async fn submit_subcontract_progress(
 /// POST /api/v1/costs/direct-entry
 pub async fn submit_direct_cost(
     State(state): State<AppState>,
+    auth: AuthContext,
     AppJson(req): AppJson<EasyDirectCostRequest>,
 ) -> Result<(StatusCode, Json<CostRegistrationResponse>), ApiError> {
+    // 権限（registrar 以上）→ 形式 → 会社境界の順に判定。以降の問い合わせはセッションの会社のみを使う
+    auth.require_cost_registration()?;
     validate_company_code(&req.company_code)?;
+    let company_code = auth.resolve_company(Some(&req.company_code))?;
     validate_project_code(&req.project_code)?;
     validate_branch_code(&req.branch_code)?;
 
@@ -604,19 +620,20 @@ pub async fn submit_direct_cost(
 
     let warnings = guard_project_branch(
         &mut tx,
-        &req.company_code,
+        &auth,
+        &company_code,
         &req.project_code,
         &req.branch_code,
         req.occurred_date,
     )
     .await?;
 
-    verify_work_type_exists(&mut tx, &req.company_code, &req.work_type_code).await?;
+    verify_work_type_exists(&mut tx, &company_code, &req.work_type_code).await?;
 
     let elem_exists = sqlx::query(
         "SELECT 1 FROM cost_elements WHERE company_code = $1 AND cost_element_code = $2",
     )
-    .bind(&req.company_code)
+    .bind(&company_code)
     .bind(cost_elem)
     .fetch_optional(&mut *tx)
     .await?;
@@ -635,7 +652,7 @@ pub async fn submit_direct_cost(
             WHERE company_code = $1 AND partner_code = $2
             "#,
         )
-        .bind(&req.company_code)
+        .bind(&company_code)
         .bind(vc)
         .fetch_optional(&mut *tx)
         .await?
@@ -651,7 +668,7 @@ pub async fn submit_direct_cost(
         }
     }
 
-    let entry_no = allocate_slip_no(&mut tx, &req.company_code, SlipKind::DirectCost).await?;
+    let entry_no = allocate_slip_no(&mut tx, &company_code, SlipKind::DirectCost).await?;
 
     sqlx::query(
         r#"
@@ -677,7 +694,7 @@ pub async fn submit_direct_cost(
         )
         "#,
     )
-    .bind(&req.company_code)
+    .bind(&company_code)
     .bind(&entry_no)
     .bind(&req.project_code)
     .bind(&req.branch_code)
@@ -709,9 +726,13 @@ pub async fn submit_direct_cost(
 /// POST /api/v1/costs/daily-report
 pub async fn submit_daily_report(
     State(state): State<AppState>,
+    auth: AuthContext,
     AppJson(req): AppJson<EasyDailyReportRequest>,
 ) -> Result<(StatusCode, Json<CostRegistrationResponse>), ApiError> {
+    // 権限（registrar 以上）→ 形式 → 会社境界の順に判定。以降の問い合わせはセッションの会社のみを使う
+    auth.require_cost_registration()?;
     validate_company_code(&req.company_code)?;
+    let company_code = auth.resolve_company(Some(&req.company_code))?;
     validate_project_code(&req.project_code)?;
     validate_branch_code(&req.branch_code)?;
 
@@ -743,14 +764,15 @@ pub async fn submit_daily_report(
 
     let warnings = guard_project_branch(
         &mut tx,
-        &req.company_code,
+        &auth,
+        &company_code,
         &req.project_code,
         &req.branch_code,
         req.work_date,
     )
     .await?;
 
-    verify_work_type_exists(&mut tx, &req.company_code, &req.work_type_code).await?;
+    verify_work_type_exists(&mut tx, &company_code, &req.work_type_code).await?;
 
     let emp_row = sqlx::query(
         r#"
@@ -759,7 +781,7 @@ pub async fn submit_daily_report(
         WHERE company_code = $1 AND partner_code = $2
         "#,
     )
-    .bind(&req.company_code)
+    .bind(&company_code)
     .bind(emp_code)
     .fetch_optional(&mut *tx)
     .await?
@@ -789,7 +811,7 @@ pub async fn submit_daily_report(
     let calculated_labor_cost =
         calc::calc_daily_labor_cost(YenAmount(standard_daily_wage), req.work_hours);
 
-    let report_no = allocate_slip_no(&mut tx, &req.company_code, SlipKind::DailyReport).await?;
+    let report_no = allocate_slip_no(&mut tx, &company_code, SlipKind::DailyReport).await?;
 
     sqlx::query(
         r#"
@@ -809,7 +831,7 @@ pub async fn submit_daily_report(
         )
         "#,
     )
-    .bind(&req.company_code)
+    .bind(&company_code)
     .bind(&report_no)
     .bind(req.work_date)
     .bind(emp_code)
@@ -836,9 +858,13 @@ pub async fn submit_daily_report(
 /// POST /api/v1/costs/equipment-movement
 pub async fn submit_equipment_movement(
     State(state): State<AppState>,
+    auth: AuthContext,
     AppJson(req): AppJson<EasyEquipmentMovementRequest>,
 ) -> Result<(StatusCode, Json<CostRegistrationResponse>), ApiError> {
+    // 権限（registrar 以上）→ 形式 → 会社境界の順に判定。以降の問い合わせはセッションの会社のみを使う
+    auth.require_cost_registration()?;
     validate_company_code(&req.company_code)?;
+    let company_code = auth.resolve_company(Some(&req.company_code))?;
     validate_project_code(&req.dest_project_code)?;
     validate_branch_code(&req.dest_branch_code)?;
 
@@ -862,14 +888,15 @@ pub async fn submit_equipment_movement(
 
     let warnings = guard_project_branch(
         &mut tx,
-        &req.company_code,
+        &auth,
+        &company_code,
         &req.dest_project_code,
         &req.dest_branch_code,
         req.movement_date,
     )
     .await?;
 
-    verify_work_type_exists(&mut tx, &req.company_code, &req.work_type_code).await?;
+    verify_work_type_exists(&mut tx, &company_code, &req.work_type_code).await?;
 
     let eq_row = sqlx::query(
         r#"
@@ -878,7 +905,7 @@ pub async fn submit_equipment_movement(
         WHERE company_code = $1 AND equipment_code = $2
         "#,
     )
-    .bind(&req.company_code)
+    .bind(&company_code)
     .bind(equip_code)
     .fetch_optional(&mut *tx)
     .await?
@@ -920,7 +947,7 @@ pub async fn submit_equipment_movement(
     );
 
     let movement_slip_no =
-        allocate_slip_no(&mut tx, &req.company_code, SlipKind::EquipmentMovement).await?;
+        allocate_slip_no(&mut tx, &company_code, SlipKind::EquipmentMovement).await?;
 
     sqlx::query(
         r#"
@@ -943,7 +970,7 @@ pub async fn submit_equipment_movement(
         )
         "#,
     )
-    .bind(&req.company_code)
+    .bind(&company_code)
     .bind(&movement_slip_no)
     .bind(equip_code)
     .bind(&req.dest_project_code)

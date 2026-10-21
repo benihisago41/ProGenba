@@ -111,3 +111,4 @@ if [ "$READY" -ne 1 ]; then
 fi
 
 echo "起動しました: $TASK_URL"
+echo "ログインには利用者が必要です。初回は README の「認証・権限・会社境界」に従って add-user で作成してください。"

@@ -15,6 +15,8 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./migrations/001_core_cost_schema.sql:/docker-entrypoint-initdb.d/001_core_cost_schema.sql:ro
+      # 認証スキーマ（冪等）。新規構築時は 001 の後に投入。既存DBへはアプリ起動時に同じSQLを自動適用する。
+      - ./migrations/002_auth.sql:/docker-entrypoint-initdb.d/002_auth.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U sirius -d sirius_reborn"]
       interval: 5s
@@ -35,6 +37,8 @@ services:
     environment:
       DATABASE_URL: postgres://sirius:${POSTGRES_PASSWORD:?環境変数POSTGRES_PASSWORDを設定してください}@db:5432/sirius_reborn
       STATIC_DIR: /app/static
+      # セッションCookieの Secure 属性。HTTP(社内LAN/ローカル)運用のため既定 false。HTTPS 終端の背後では true。
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
     ports:
       - "${APP_BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-8080}:8080"
 

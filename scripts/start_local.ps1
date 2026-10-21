@@ -32,3 +32,4 @@ while($taskTimer.Elapsed.TotalSeconds -lt 45) {
 }
 if(!$taskReady) { throw 'アプリの稼働確認がタイムアウトしました。docker compose logs app を確認してください。' }
 Write-Host "起動しました: $taskUrl"
+Write-Host "ログインには利用者が必要です。初回は pwsh -File scripts/add_user.ps1 -CompanyCode 0000 -UserId <利用者ID> -Role approver で作成してください。"

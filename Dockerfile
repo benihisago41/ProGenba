@@ -18,6 +18,8 @@ FROM rust:1.80-bookworm AS backend-builder
 
 WORKDIR /build/backend
 
+# 認証スキーマ（002_auth.sql）を include_str! でバイナリに埋め込むため /build/migrations に置く
+COPY migrations/ /build/migrations/
 COPY backend/Cargo.toml backend/Cargo.lock ./
 COPY backend/ ./
 RUN cargo build --release --locked

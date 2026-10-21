@@ -4,3 +4,4 @@ migrations/001_core_cost_schema.sql text eol=lf
 backend/src/domain/types.rs text eol=lf
 frontend/src/bindings.ts text eol=lf
 scripts/start_local.sh text eol=lf
+migrations/002_auth.sql text eol=lf
