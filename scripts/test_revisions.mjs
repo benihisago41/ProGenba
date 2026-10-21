@@ -516,7 +516,7 @@ try {
     assert.ok(src, 'バンドルの script がありません');
     const js = await (await fetch(new URL(src, base))).text();
     for (const s of ['予算・発注', '/api/v1/projects', '/api/v1/revision-options', '/api/v1/orders', '否認理由', '改定案を作成']) assert.ok(js.includes(s), `バンドルに ${s} がありません`);
-    assert.ok(html.includes('.rev-row'), '予算・発注のCSSがありません');
+    assert.ok(!html.includes('.rev-row'), '旧来の予算・発注CSSが残っています');
   });
 
   // ---- 画面（375px）: 横スクロールが出ないこと、権限のないボタンは無効で理由が出ること ----
@@ -549,12 +549,17 @@ try {
           await page.locator('button[type=submit]').click();
           await page.getByRole('button', { name: /予算・発注/ }).click();
           await page.waitForFunction(() => document.body.innerText.includes('承認済み最新版'));
+          await page.getByRole('heading', { name: '予算・発注', exact: true }).waitFor();
+          assert.ok(await page.locator('.fui-Card').count() > 0, 'Fluent UI の Card がありません');
           const overflow = async label => {
             const m = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, bw: document.body.scrollWidth, w: window.innerWidth }));
             measured.push({ role, label, ...m });
             assert.ok(m.sw <= m.w && m.bw <= m.w, `${role}/${label}: 横スクロールあり（scrollWidth ${m.sw}/${m.bw} > ${m.w}）`);
           };
           await overflow('予算・発注タブ');
+          await page.getByRole('button', { name: 'ダーク表示に切り替え', exact: true }).click();
+          await overflow('予算・発注タブ（ダーク）');
+          await page.getByRole('button', { name: 'ライト表示に切り替え', exact: true }).click();
           if (role === 'viewer') {
             const create = page.getByRole('button', { name: /明細を編集/ });
             assert.ok(await create.isDisabled(), '閲覧権限では編集ボタンが無効');
@@ -569,8 +574,13 @@ try {
             await page.getByRole('button', { name: /明細を追加/ }).click();
             await overflow('予算明細の編集');
             await page.getByRole('button', { name: '編集をやめる' }).click();
-            await page.getByRole('button', { name: '否認…' }).first().click();
+            const discard = page.getByRole('dialog');
+            await discard.getByRole('button', { name: '破棄する', exact: true }).click();
+            await discard.waitFor({ state: 'hidden' });
+            await page.getByRole('button', { name: '否認…', exact: true }).first().click();
+            await page.locator('#rev-budget-reason').waitFor({ state: 'visible' });
             await overflow('否認理由の入力');
+            await page.getByRole('dialog').getByRole('button', { name: '戻る', exact: true }).click();
             await page.getByRole('button', { name: /新規発注案/ }).click();
             await overflow('新規発注案フォーム');
             await page.getByRole('button', { name: /工事を登録/ }).click();

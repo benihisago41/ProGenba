@@ -1,5 +1,6 @@
 import useSWR from "swr";
 import { apiFetch } from "./auth";
+import { HttpError } from "./errors";
 import { API_ENDPOINTS, LookupsDto, ProjectCostCockpitDto } from "./bindings";
 
 export async function readApi<T>(url: string): Promise<T> {
@@ -7,7 +8,7 @@ export async function readApi<T>(url: string): Promise<T> {
   if (!response.ok) {
     let message = `データを取得できませんでした（HTTP ${response.status}）。`;
     try { const data = await response.json(); if (typeof data.message === "string") message = data.message; } catch { /* JSONでない通信エラーにも再試行を案内する */ }
-    throw new Error(message);
+    throw new HttpError(response.status, message);
   }
   return response.json() as Promise<T>;
 }

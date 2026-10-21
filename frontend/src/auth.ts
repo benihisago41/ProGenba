@@ -1,3 +1,4 @@
+import { HttpError } from "./errors";
 // 認証（Phase 3）用の型と通信ヘルパー。
 // bindings.ts（ロック済アンカー）は変更せず、認証関連の型はこのファイルに置く。
 
@@ -44,6 +45,8 @@ export function canRegisterCompleted(role: Role): boolean {
 }
 
 // API が 401 を返したときに呼ぶ処理（App がログイン画面へ戻す処理を登録する）
+let sessionSuspended = false;
+export function resumeApiSession() { sessionSuspended = false; }
 let unauthorizedHandler: (() => void) | null = null;
 
 export function setUnauthorizedHandler(handler: (() => void) | null): void {
@@ -54,15 +57,17 @@ export function setUnauthorizedHandler(handler: (() => void) | null): void {
  * 業務APIの共通 fetch。
  * - credentials: "same-origin" を明示し、同一オリジンの HttpOnly セッションCookie を送る
  *   （別オリジンへは送らない）。
- * - 401 を受けたら登録済みハンドラでログイン画面へ戻す。応答はそのまま呼出側へ返す。
+ * - 401 を受けたら再ログインまで業務APIを停止し、入力保持のまま再認証を促す。
  */
 export async function apiFetch(
   input: string,
   init: RequestInit = {}
 ): Promise<Response> {
+  if (sessionSuspended) throw new HttpError(401, "再ログインまで業務操作を停止しています。");
   const res = await fetch(input, { ...init, credentials: "same-origin" });
-  if (res.status === 401 && unauthorizedHandler) {
-    unauthorizedHandler();
+  if (res.status === 401) {
+    sessionSuspended = true;
+    unauthorizedHandler?.();
   }
   return res;
 }
@@ -104,10 +109,11 @@ export async function login(req: LoginRequest): Promise<MeResponse> {
 
 export async function logout(): Promise<void> {
   // 状態変更系 POST は Content-Type: application/json が必須（CSRF 対策）
-  await fetch(AUTH_ENDPOINTS.LOGOUT, {
+  const response = await fetch(AUTH_ENDPOINTS.LOGOUT, {
     method: "POST",
     credentials: "same-origin",
     headers: { "Content-Type": "application/json" },
     body: "{}",
   });
+  if (!response.ok && response.status !== 401) throw new HttpError(response.status, "ログアウトを確認できませんでした。");
 }

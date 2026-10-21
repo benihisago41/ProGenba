@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Decimal from "decimal.js";
 import { API_ENDPOINTS, CostRegistrationResponse, EasyDailyReportRequest, EasyDirectCostRequest, EasyEquipmentMovementRequest, EasySubcontractProgressRequest, LookupsDto, ProjectCostCockpitDto, QuickItemTemplateDto } from "./bindings";
 import { apiFetch } from "./auth";
+import { describeFailure, Guidance, HttpError } from "./errors";
 
 export type InputMode = "subcontract" | "direct" | "daily" | "equipment";
 export const modeLabels: Record<InputMode, string> = { subcontract: "外注の出来高", direct: "材料・経費", daily: "作業日報", equipment: "資機材の使用" };
@@ -57,6 +58,8 @@ export function useCostDraft({ lookups, project, companyCode, allowCompleted, on
   const [isSubmitting, setIsSubmitting] = useState(false);
   const busyRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
+  // サーバー・通信の失敗（何が起きたか・入力の保持・次の操作）。入力欄単位の誤りは error と Field に出す
+  const [failure, setFailure] = useState<Guidance | null>(null);
   const [success, setSuccess] = useState<{ documentNo: string; label: string; warnings: string[] } | null>(null);
   const [refreshWarning, setRefreshWarning] = useState(false);
   const initialised = useRef(!!lookups);
@@ -66,7 +69,7 @@ export function useCostDraft({ lookups, project, companyCode, allowCompleted, on
   }, [lookups]);
   useEffect(() => { onDirtyChange(dirtyModes.length > 0); }, [dirtyModes, onDirtyChange]);
   useEffect(() => { onBusyChange(isSubmitting); }, [isSubmitting, onBusyChange]);
-  const mark = (target: InputMode) => { setDirtyModes(list => list.includes(target) ? list : [...list, target]); setSuccess(null); setError(null); };
+  const mark = (target: InputMode) => { setDirtyModes(list => list.includes(target) ? list : [...list, target]); setSuccess(null); setError(null); setFailure(null); };
   const updateSub = (patch: Partial<SubDraft>) => { if (busyRef.current) return; mark("subcontract"); setSub(value => ({ ...value, ...patch })); };
   const updateDirect = (patch: Partial<DirectDraft>) => { if (busyRef.current) return; mark("direct"); setDirect(value => ({ ...value, ...patch })); };
   const updateDaily = (patch: Partial<DailyDraft>) => { if (busyRef.current) return; mark("daily"); setDaily(value => ({ ...value, ...patch })); };
@@ -209,20 +212,24 @@ export function useCostDraft({ lookups, project, companyCode, allowCompleted, on
         endpoint = API_ENDPOINTS.SUBMIT_EQUIPMENT_MOVEMENT;
         payload = { company_code: companyCode, equipment_code: equip.equipment, dest_project_code: project.key.project_code, dest_branch_code: project.key.branch_code, work_type_code: equip.workType, movement_date: equip.date, quantity: equipPreview.quantity, usage_days: equipPreview.days, freight_fee: equipPreview.freight, maintenance_fee: equipPreview.maintenance }; break;
     }
-    busyRef.current = true; setIsSubmitting(true); setError(null); setSuccess(null); setRefreshWarning(false);
+    busyRef.current = true; setIsSubmitting(true); setError(null); setFailure(null); setSuccess(null); setRefreshWarning(false);
     let result: CostRegistrationResponse;
     try {
       const res = await apiFetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(payload) });
       if (res.status !== 201) {
         let message = `登録できませんでした（HTTP ${res.status}）。入力内容を保持しています。`;
         try { const data = await res.json(); if (typeof data.message === "string") message = data.message; } catch { /* 非JSON応答の際も入力は保持する */ }
-        throw new Error(message);
+        throw new HttpError(res.status, message);
       }
       try { result = await res.json() as CostRegistrationResponse; }
       catch { throw new Error("登録結果を確認できません。重複を避けるため、工事の状況を更新して管理者にご確認ください。"); }
       if (!result || typeof result.document_no !== "string" || !/^\d{12}$/.test(result.document_no)) throw new Error("登録結果を確認できません。重複を避けるため、工事の状況を更新して管理者にご確認ください。");
     } catch (err) {
-      setError(err instanceof TypeError ? "通信結果を確認できません。入力は保持しています。重複を避けるため、再登録の前に工事の状況を更新して確認してください。" : err instanceof Error ? err.message : "登録結果を確認できません。工事の状況を確認してください。");
+      // 通信が途切れた場合は、サーバーで登録済みの可能性があるため自動で再送せず、確認を案内する
+      setFailure(err instanceof TypeError
+        ? { intent: "error", title: "通信結果を確認できません", body: "入力は保持しています。登録済みの可能性があるため、再登録の前に「更新」で工事の状況を確認してください。" }
+        : err instanceof HttpError ? describeFailure(err, "登録", "入力内容は保持しています。")
+        : { intent: "error", title: "登録結果を確認できません", body: err instanceof Error ? err.message : "工事の状況を確認してください。" });
       busyRef.current = false; setIsSubmitting(false); return;
     }
     setSuccess({ documentNo: result.document_no, label: modeLabels[mode], warnings: Array.isArray(result.warnings) ? result.warnings : [] });
@@ -232,6 +239,6 @@ export function useCostDraft({ lookups, project, companyCode, allowCompleted, on
   };
   const fieldError = (key: string) => attempted.includes(mode) || touched.includes(`${mode}:${key}`) ? activePreview.errors[key] : undefined;
   const touch = (key: string) => setTouched(list => list.includes(`${mode}:${key}`) ? list : [...list, `${mode}:${key}`]);
-  return { mode, setMode, sub, direct, daily, equip, updateSub, updateDirect, updateDaily, updateEquip, setProgress, setSubAmount, applyTemplate, orders, order, selectOrder, employee, equipment, subPreview, directPreview, dailyPreview, equipPreview, activePreview, isSubmitting, dirtyModes, error, success, refreshWarning, setRefreshWarning, validate, submit, clearMode, fieldError, touch, setError, setSuccess };
+  return { mode, setMode, sub, direct, daily, equip, updateSub, updateDirect, updateDaily, updateEquip, setProgress, setSubAmount, applyTemplate, orders, order, selectOrder, employee, equipment, subPreview, directPreview, dailyPreview, equipPreview, activePreview, previews, isSubmitting, dirtyModes, error, failure, setFailure, success, refreshWarning, setRefreshWarning, validate, submit, clearMode, fieldError, touch, setError, setSuccess };
 }
 export type CostDraft = ReturnType<typeof useCostDraft>;
