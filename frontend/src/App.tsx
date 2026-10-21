@@ -6,6 +6,7 @@ import { CockpitView } from "./CockpitView";
 import { EasyCostInput, EasyCostInputProps } from "./EasyCostInput";
 import { canRegisterCompleted, canRegisterCost, fetchMe, logout, MeResponse, roleLabel, setUnauthorizedHandler } from "./auth";
 import { LoginView } from "./LoginView";
+import { SampleWorkspace } from "./SampleWorkspace";
 import { ProjectSelection, useProjectData } from "./data";
 import { ConfirmDialog, Notice, ThemeButton, usePageStyles } from "./ui";
 export type { EasyCostInputProps };
@@ -28,7 +29,8 @@ const useStyles = makeStyles({
 });
 
 export const App: React.FC = () => {
-  const { data: session, error, mutate, isLoading } = useSWR("progenba-session", fetchMe, { shouldRetryOnError: false, revalidateOnFocus: false });
+  const [sample, setSample] = useState(false);
+  const { data: session, error, mutate, isLoading } = useSWR(sample ? null : "progenba-session", fetchMe, { shouldRetryOnError: false, revalidateOnFocus: false });
   const [loginNotice, setLoginNotice] = useState<string | null>(null);
   const styles = useStyles(); const p = usePageStyles();
   useEffect(() => {
@@ -40,9 +42,10 @@ export const App: React.FC = () => {
     catch { setLoginNotice("この端末の入力は破棄しましたが、サーバー側のログアウトを確認できませんでした。通信状況をご確認ください。"); }
     finally { void mutate(null, false); }
   }, [mutate]);
+  if (sample) return <SampleWorkspace onExit={() => setSample(false)} />;
   if (isLoading) return <main className={styles.session}><Spinner label="ログイン状態を確認しています…" /></main>;
-  if (error) return <main className={styles.session}><div className={p.compact}><Notice intent="error">ログイン状態を確認できませんでした。通信状況をご確認ください。</Notice><Button size="large" onClick={() => void mutate()}>もう一度確認する</Button></div></main>;
-  if (!session) return <LoginView notice={loginNotice} onLoggedIn={me => { setLoginNotice(null); void mutate(me, false); }} />;
+  if (error) return <main className={styles.session}><div className={p.compact}><Notice intent="error">ログイン状態を確認できませんでした。実際の利用にはバックエンドへの接続が必要です。</Notice><Button appearance="primary" size="large" onClick={() => setSample(true)}>サンプルを見る（ログイン不要）</Button><Body1>架空データで画面と入力を確認できます。登録・保存はできません。</Body1><Button size="large" onClick={() => void mutate()}>もう一度確認する</Button></div></main>;
+  if (!session) return <LoginView onSample={() => setSample(true)} notice={loginNotice} onLoggedIn={me => { setLoginNotice(null); void mutate(me, false); }} />;
   return <SessionWorkspace key={`${session.company_code}:${session.user_id}`} session={session} onLogout={handleLogout} />;
 };
 
@@ -83,7 +86,7 @@ function AuthenticatedApp({ session, onLogout }: { session: MeResponse; onLogout
     setRefreshing(true); setRefreshNotice(null);
     const success = await refresh();
     setRefreshFailed(!success);
-    setRefreshNotice(success ? "最新の状態に更新しました。入力途中の内容は保持しています。" : "更新できないデータがあります。表示中の内容と入力は保持しています。「更新」で再取得してください。");
+    setRefreshNotice(success ? "最新の状態に更新しました。入力途中の内容は保持しています。" : "更新できないデータがありま���。表示中の内容と入力は保持しています。「更新」で再取得してください。");
     setRefreshing(false);
   };
   const confirm = () => {

@@ -4,7 +4,7 @@ import { Building24Regular, ArrowRight20Regular } from "@fluentui/react-icons";
 import { login, MeResponse } from "./auth";
 import { Notice, ThemeButton, usePageStyles } from "./ui";
 
-export interface LoginViewProps { onLoggedIn: (me: MeResponse) => void; notice?: string | null }
+export interface LoginViewProps { onSample?: () => void; onLoggedIn: (me: MeResponse) => void; notice?: string | null }
 const useStyles = makeStyles({
   page: { minHeight: "100vh", display: "flex", flexDirection: "column" },
   header: { display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: tokens.spacingVerticalL, paddingBottom: tokens.spacingVerticalL, paddingLeft: tokens.spacingHorizontalXXL, paddingRight: tokens.spacingHorizontalXXL, backgroundColor: tokens.colorNeutralBackground1, borderBottom: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke2}` },
@@ -15,7 +15,7 @@ const useStyles = makeStyles({
   footer: { textAlign: "center", color: tokens.colorNeutralForeground3, paddingTop: tokens.spacingVerticalL, paddingBottom: tokens.spacingVerticalL },
 });
 
-export const LoginView: React.FC<LoginViewProps> = ({ onLoggedIn, notice }) => {
+export const LoginView: React.FC<LoginViewProps> = ({ onLoggedIn, notice, onSample }) => {
   const s = useStyles(); const p = usePageStyles();
   const [companyCode, setCompanyCode] = useState("");
   const [userId, setUserId] = useState("");
@@ -39,6 +39,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoggedIn, notice }) => {
     <main className={s.main}><div className={s.layout}>
       <section className={s.intro} aria-labelledby="welcome-heading"><Badge appearance="outline" color="brand">現場の記録を、もっとシンプルに。</Badge><Title1 as="h1" id="welcome-heading">工事のいまが、<br />ひと目でわかる。</Title1><Body1 className={p.muted}>予算と原価の確認から、日々の記録まで。<br />いつもの工事を選んで、はじめましょう。</Body1><Divider /><div className={p.compact}><Body1>工事ごとの予算・原価・見込粗利を確認</Body1><Body1>出来高・材料・日報・資機材をかんたん登録</Body1></div></section>
       <Card className={p.card}><div className={p.stack}><div className={p.compact}><Title3 as="h2">ログイン</Title3><Body1 className={p.muted}>管理者から案内された情報を入力してください。</Body1></div>
+        {onSample && <><Button size="large" onClick={onSample}>サンプルを見る（ログイン不要）</Button><Body1 className={p.muted}>架空データで確認できます。登録・保存はできません。</Body1></>}
         {notice && <Notice>{notice}</Notice>}{error && <Notice intent="error">{error}</Notice>}
         <form ref={formRef} className={p.stack} onSubmit={event => void handleSubmit(event)} noValidate aria-busy={isSubmitting}>
           <Field label="会社コード" required hint="4文字の英数字（例：0000）" validationMessage={attempted ? errors.company : undefined} validationState={attempted && errors.company ? "error" : "none"}><Input id="login-company" size="large" className={p.control} autoComplete="organization" autoCapitalize="none" spellCheck={false} maxLength={4} value={companyCode} onChange={(_, data) => setCompanyCode(data.value)} disabled={isSubmitting} /></Field>

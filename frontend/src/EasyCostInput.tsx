@@ -9,6 +9,7 @@ import { completionLabel, InputMode, isBranchLocked, modeLabels, useCostDraft } 
 import { DailyForm, DirectForm, EquipmentForm, modeDescriptions, SubcontractForm } from "./CostForms";
 
 export interface EasyCostInputProps {
+  previewOnly?: boolean;
   projects: ProjectCostCockpitDto[]; companyCode: string; selection: ProjectSelection; onSelect: (next: ProjectSelection) => void;
   lookups: LookupsDto | null; lookupsLoading: boolean; lookupsError: string | null; onRetryLookups: () => Promise<void>;
   onRegistered: () => Promise<boolean>; canRegisterCompleted?: boolean; onDirtyChange: (value: boolean) => void; onBusyChange: (value: boolean) => void; onShowCockpit: () => void;
@@ -23,7 +24,7 @@ const useStyles = makeStyles({
 });
 const icons = { subcontract: <People24Regular />, direct: <Box24Regular />, daily: <ClipboardTask24Regular />, equipment: <Toolbox24Regular /> };
 
-export const EasyCostInput: React.FC<EasyCostInputProps> = ({ projects, companyCode, selection, onSelect, lookups, lookupsLoading, lookupsError, onRetryLookups, onRegistered, canRegisterCompleted = true, onDirtyChange, onBusyChange, onShowCockpit }) => {
+export const EasyCostInput: React.FC<EasyCostInputProps> = ({ previewOnly = false, projects, companyCode, selection, onSelect, lookups, lookupsLoading, lookupsError, onRetryLookups, onRegistered, canRegisterCompleted = true, onDirtyChange, onBusyChange, onShowCockpit }) => {
   const p = usePageStyles(); const s = useStyles(); const restoreFocus = useRestoreFocusTarget(); const form = useRef<HTMLFormElement>(null); const successRef = useRef<HTMLDivElement>(null);
   const project = projects.find(item => item.key.project_code === selection.projectCode && item.key.branch_code === selection.branchCode) ?? null;
   const d = useCostDraft({ lookups, project, companyCode, allowCompleted: canRegisterCompleted, onRegistered, onDirtyChange, onBusyChange });
@@ -34,10 +35,11 @@ export const EasyCostInput: React.FC<EasyCostInputProps> = ({ projects, companyC
   const changeOrder = (value: string) => { if (value === d.sub.orderNo) return; if (d.dirtyModes.includes("subcontract")) setPending({ kind: "order", value }); else d.selectOrder(value); };
   const changeTemplate = (value: string) => { if (d.dirtyModes.includes("direct")) setPending({ kind: "template", value }); else { const tpl = lookups?.quick_templates.find(item => item.template_code === value); if (tpl) d.applyTemplate(tpl); } };
   const focusInvalid = () => requestAnimationFrame(() => { (form.current?.querySelector<HTMLElement>('[aria-invalid="true"]') ?? form.current?.querySelector<HTMLElement>('input, select'))?.focus(); });
-  const performSubmit = async () => { await d.submit(); requestAnimationFrame(() => successRef.current?.focus()); };
+  const performSubmit = async () => { if (previewOnly) return; await d.submit(); requestAnimationFrame(() => successRef.current?.focus()); };
   const submit = (event: React.FormEvent) => {
     event.preventDefault(); if (d.isSubmitting || locked) return;
     if (!d.validate()) { focusInvalid(); return; }
+    if (previewOnly) { d.setError("入力内容を確認しました。サンプルのため登録・保存は行いません。"); return; }
     if (project?.completion_status === "1") setPending({ kind: "completed" }); else void performSubmit();
   };
   const confirm = () => {
@@ -75,8 +77,8 @@ export const EasyCostInput: React.FC<EasyCostInputProps> = ({ projects, companyC
             <div className={p.compact}><Caption1 className={p.muted}>{d.mode === 'daily' ? '概算労務原価' : '今回の原価（概算）'}</Caption1><Title1 as="p" className={s.amount} data-testid="cost-preview">{Object.keys(d.activePreview.errors).length === 0 ? formatYen(d.activePreview.amount) : '—'}</Title1><Caption1 className={p.muted}>{d.mode === 'equipment' ? '数量 × 日額 × 日数 ＋ 運賃・整備費' : d.mode === 'direct' ? '数量 × 単価（四捨五入）' : d.mode === 'subcontract' ? '控除前の出来高金額（税抜）' : '標準日額 × 作業時間 ÷ 8'}</Caption1></div>
             {d.fieldError('amount') && <Notice intent="error">{d.fieldError('amount')}</Notice>}
             {d.error && <Notice intent="error">{d.error}</Notice>}
-            <Button {...restoreFocus} type="submit" appearance="primary" size="large" className={s.fullButton} disabled={d.isSubmitting || locked} icon={d.isSubmitting ? <Spinner size="tiny" /> : <CheckmarkCircle20Regular />}>{d.isSubmitting ? '登録しています…' : 'この内容で登録'}</Button>
-            <Caption1 className={p.muted}>登録時にサーバーで金額を再計算します。通信中はこのままお待ちください。</Caption1>
+            <Button {...restoreFocus} type="submit" appearance="primary" size="large" className={s.fullButton} disabled={d.isSubmitting || locked} icon={d.isSubmitting ? <Spinner size="tiny" /> : <CheckmarkCircle20Regular />}>{previewOnly ? '入力内容を確認（保存しません）' : d.isSubmitting ? '登録しています…' : 'この内容で登録'}</Button>
+            <Caption1 className={p.muted}>{previewOnly ? 'サンプルの概算です。サーバーへの送信・登録・保存は行いません。' : '登録時にサーバーで金額を再計算します。通信中はこのままお待ちください。'}</Caption1>
             {d.dirtyModes.includes(d.mode) && <Button {...restoreFocus} type="button" appearance="subtle" size="large" disabled={d.isSubmitting} onClick={() => setPending({ kind: 'discard' })}>この方式の入力をやり直す</Button>}
             <Divider /><div className={p.row}><ArrowRight20Regular /><Caption1 className={p.muted}>画面を切り替えても入力は保持されます。再読込後は復元されません。</Caption1></div>
           </div></Card>
