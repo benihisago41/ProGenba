@@ -1,4 +1,5 @@
 # 認証・権限・会社境界の結合試験（専用 Compose プロジェクト progenba-authtest で実行）
+# 続けて予算・発注の登録と承認（Phase 4）の結合試験 scripts/test_revisions.mjs も同じ専用環境で実行する。
 # - 稼働中の progenba プロジェクト（progenba-app-1 / progenba-db-1 / progenba_pgdata）には触れない。
 # - リポジトリの .env は読まない（空の env ファイルを指定）。DBパスワードは実行ごとに乱数生成しプロセス環境だけに置く。
 # - 試験用利用者のパスワードも実行ごとに乱数生成し、ファイル・ログ・コマンドライン引数に残さない。
@@ -21,7 +22,7 @@ $compose = @('compose', '-p', $project, '--env-file', $emptyEnv)
 function New-Secret { [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(24)).ToLowerInvariant() }
 
 $savedEnv = @{}
-foreach ($k in @('POSTGRES_PASSWORD', 'APP_BIND_ADDRESS', 'APP_PORT', 'SESSION_COOKIE_SECURE', 'PGPASSWORD', 'AUTHTEST_DEMOTE_OLD_COOKIE', 'AUTHTEST_DEMOTE_ROLE_BEFORE', 'SIRIUS_MIGRATION_RESULT')) { $savedEnv[$k] = [Environment]::GetEnvironmentVariable($k) }
+foreach ($k in @('POSTGRES_PASSWORD', 'APP_BIND_ADDRESS', 'APP_PORT', 'SESSION_COOKIE_SECURE', 'PGPASSWORD', 'AUTHTEST_DEMOTE_OLD_COOKIE', 'AUTHTEST_DEMOTE_ROLE_BEFORE', 'SIRIUS_MIGRATION_RESULT', 'REVISION_ALLOW_SELF_APPROVAL')) { $savedEnv[$k] = [Environment]::GetEnvironmentVariable($k) }
 $secretVars = [Collections.Generic.List[string]]::new()
 $exitCode = 1
 try {
@@ -29,6 +30,8 @@ try {
     $env:APP_BIND_ADDRESS = '127.0.0.1'
     $env:APP_PORT = "$AppPort"
     $env:SESSION_COOKIE_SECURE = 'false'
+    # 自己承認は既定（許可）で試験する。親プロセスに設定があっても持ち込まない
+    $env:REVISION_ALLOW_SELF_APPROVAL = $null
 
     & docker @compose up -d --build --wait
     if ($LASTEXITCODE -ne 0) { throw '専用環境の起動に失敗しました' }
@@ -49,8 +52,9 @@ try {
     }
     if (!$ready) { & docker @compose logs --tail 20 app; throw 'アプリの起動確認に失敗しました' }
 
-    # ---- 既存DB（002 未適用）への起動時マイグレーション経路 ----
-    # initdb で作られた認証テーブルを DROP して「認証導入前のDB」を再現し、app 再起動で 002 が適用されることを確認する。
+    # ---- 既存DB（002・003 未適用）への起動時マイグレーション経路 ----
+    # initdb で作られた認証テーブル（002）と操作履歴テーブル（003）を DROP して「導入前のDB」を再現し、
+    # app 再起動で 002・003 が適用されること、2回目の再起動でも変わらない（冪等）ことを確認する。
     function Invoke-DbSql([string]$Sql) {
         $out = $Sql | & docker @compose exec -T db psql -X -q -v ON_ERROR_STOP=1 -U sirius -d sirius_reborn -tA
         if ($LASTEXITCODE -ne 0) { throw 'DB問い合わせに失敗しました' }
@@ -60,11 +64,14 @@ try {
     function Get-DigestSet {
         $lines = Invoke-DbSql $compareSql
         [pscustomobject]@{
-            # 業務テーブルの件数・全行ダイジェスト（認証テーブルは除く）
-            Business = @($lines | Where-Object { $_ -like 'table|*' -and $_ -notmatch '^table\|app_' })
+            # 業務テーブル（001）の件数・全行ダイジェスト（認証テーブル・操作履歴テーブルは除く）
+            Business = @($lines | Where-Object { $_ -like 'table|*' -and $_ -notmatch '^table\|(app_|revision_events\|)' })
             # 認証テーブルの制約・インデックス定義
             AuthSchema = @($lines | Where-Object { $_ -notlike 'table|*' -and $_ -match 'app_(users|sessions)' })
             AuthTables = [int](@(Invoke-DbSql "SELECT count(*) FROM pg_tables WHERE schemaname='public' AND tablename IN ('app_users','app_sessions');")[0])
+            # 操作履歴（003）の制約・索引・トリガー・関数の定義
+            RevisionSchema = @($lines | Where-Object { $_ -notlike 'table|*' -and $_ -match 'revision_event' })
+            RevisionTables = [int](@(Invoke-DbSql "SELECT count(*) FROM pg_tables WHERE schemaname='public' AND tablename = 'revision_events';")[0])
         }
     }
     function Restart-App {
@@ -79,13 +86,26 @@ try {
         [pscustomobject]@{ Healthy = $ok; Restarted = ($before -ne $after) }
     }
     $initial = Get-DigestSet
-    Invoke-DbSql 'DROP TABLE IF EXISTS app_sessions; DROP TABLE IF EXISTS app_users;' | Out-Null
+    Invoke-DbSql 'DROP TABLE IF EXISTS app_sessions; DROP TABLE IF EXISTS app_users; DROP TABLE IF EXISTS revision_events; DROP FUNCTION IF EXISTS forbid_revision_event_change();' | Out-Null
     $dropped = Get-DigestSet
     $r1 = Restart-App
     $first = Get-DigestSet
     $r2 = Restart-App
     $second = Get-DigestSet
     $same = { param($a, $b) (@(Compare-Object @($a) @($b))).Count -eq 0 }
+    $revision = [ordered]@{
+        initdb_revision_tables = $initial.RevisionTables
+        revision_schema_objects = $initial.RevisionSchema.Count
+        revision_tables_after_drop = $dropped.RevisionTables
+        revision_schema_objects_after_drop = $dropped.RevisionSchema.Count
+        restart1 = [ordered]@{ revision_tables = $first.RevisionTables; revision_schema_same_as_initdb = (& $same $initial.RevisionSchema $first.RevisionSchema)
+            business_digest_unchanged = (& $same $initial.Business $first.Business) }
+        restart2_idempotent = [ordered]@{ revision_tables = $second.RevisionTables; revision_schema_same_as_initdb = (& $same $initial.RevisionSchema $second.RevisionSchema)
+            business_digest_unchanged = (& $same $initial.Business $second.Business) }
+    }
+    $revision.passed = ($initial.RevisionTables -eq 1) -and ($initial.RevisionSchema.Count -ge 5) -and ($dropped.RevisionTables -eq 0) -and ($dropped.RevisionSchema.Count -eq 0) -and
+        $r1.Restarted -and $r1.Healthy -and ($first.RevisionTables -eq 1) -and $revision.restart1.revision_schema_same_as_initdb -and $revision.restart1.business_digest_unchanged -and
+        $r2.Restarted -and $r2.Healthy -and ($second.RevisionTables -eq 1) -and $revision.restart2_idempotent.revision_schema_same_as_initdb -and $revision.restart2_idempotent.business_digest_unchanged
     $migration = [ordered]@{
         initdb_auth_tables = $initial.AuthTables
         auth_tables_after_drop = $dropped.AuthTables
@@ -98,13 +118,15 @@ try {
         restart2_idempotent = [ordered]@{ restarted = $r2.Restarted; healthy = $r2.Healthy; auth_tables = $second.AuthTables
             auth_schema_same_as_initdb = (& $same $initial.AuthSchema $second.AuthSchema)
             business_digest_unchanged = (& $same $initial.Business $second.Business) }
+        revision_workflow_003 = $revision
     }
     $migration.passed = ($initial.AuthTables -eq 2) -and ($dropped.AuthTables -eq 0) -and ($initial.Business.Count -ge 14) -and
         $migration.business_unchanged_by_drop -and ($initial.AuthSchema.Count -gt 0) -and
         $r1.Restarted -and $r1.Healthy -and ($first.AuthTables -eq 2) -and $migration.restart1.auth_schema_same_as_initdb -and $migration.restart1.business_digest_unchanged -and
-        $r2.Restarted -and $r2.Healthy -and ($second.AuthTables -eq 2) -and $migration.restart2_idempotent.auth_schema_same_as_initdb -and $migration.restart2_idempotent.business_digest_unchanged
+        $r2.Restarted -and $r2.Healthy -and ($second.AuthTables -eq 2) -and $migration.restart2_idempotent.auth_schema_same_as_initdb -and $migration.restart2_idempotent.business_digest_unchanged -and
+        $revision.passed
     $env:SIRIUS_MIGRATION_RESULT = ($migration | ConvertTo-Json -Depth 5 -Compress)
-    Write-Host "起動時マイグレーション経路: passed=$($migration.passed)"
+    Write-Host "起動時マイグレーション経路: passed=$($migration.passed)（003: $($revision.passed)）"
 
     # 試験用利用者（2社×3役割＋ロック試験用）。パスワードは標準入力で渡す。
     $users = @()
@@ -152,7 +174,35 @@ try {
     $runArgs += @('--mount', "type=bind,source=$root,target=/repo", '-w', '/repo', 'node:22-alpine', 'sh', '-c',
         '(apk add --no-cache postgresql16-client || apk add --no-cache postgresql-client) >/dev/null && node scripts/test_api.mjs; api=$?; node scripts/test_auth.mjs; auth=$?; echo "test_api=$api test_auth=$auth"; [ $api -eq 0 ] && [ $auth -eq 0 ]')
     & docker @runArgs
-    $exitCode = $LASTEXITCODE
+    $apiAuthExit = $LASTEXITCODE
+
+    # ---- 予算・発注の登録と承認（Phase 4）: scripts/test_revisions.mjs ----
+    # test_auth.mjs は終了時に authtest-* 利用者を削除するため、別の試験用利用者 revtest-*（2社×3役割）をここで作る。
+    foreach ($company in @('0000', '9001')) {
+        foreach ($role in @('viewer', 'registrar', 'approver')) {
+            $name = "REVTEST_PW_${company}_$($role.ToUpperInvariant())"
+            $secret = New-Secret
+            [Environment]::SetEnvironmentVariable($name, $secret)
+            $secretVars.Add($name)
+            $secret | & docker @compose exec -T app /app/sirius-reborn-backend add-user --company $company --user-id "revtest-$role" --role $role
+            if ($LASTEXITCODE -ne 0) { throw "試験用利用者の作成に失敗しました: $company/revtest-$role" }
+            $secret = $null
+        }
+    }
+    $revArgs = @('run', '--rm', '--label', 'ai.agent=codex', '--network', $network,
+        '-e', 'PGHOST=db', '-e', 'PGUSER=sirius', '-e', 'PGDATABASE=sirius_reborn', '-e', 'PGPASSWORD',
+        '-e', 'SIRIUS_TEST_PSQL=1', '-e', 'SIRIUS_TEST_URL=http://app:8080',
+        '-e', 'SIRIUS_REVISIONS_OUTPUT=artifacts/revisions-acceptance.json', '-e', 'SIRIUS_MIGRATION_RESULT',
+        '-e', "SIRIUS_TEST_PROJECT=$project", '-e', "SIRIUS_TEST_COMMIT=$commit$dirty",
+        '-e', 'SIRIUS_UI_CHECK=1', '-e', 'SIRIUS_PLAYWRIGHT_MODULE=/tmp/pw/node_modules/playwright-core/index.mjs')
+    foreach ($name in $secretVars) { if ($name -like 'REVTEST_PW_*') { $revArgs += @('-e', $name) } }
+    # 375px 画面確認用に Alpine の chromium と playwright-core（frontend の playwright と同じ版）を試験コンテナ内だけに入れる
+    $revArgs += @('--mount', "type=bind,source=$root,target=/repo", '-w', '/repo', 'node:22-alpine', 'sh', '-c',
+        '(apk add --no-cache postgresql16-client || apk add --no-cache postgresql-client) >/dev/null && apk add --no-cache chromium >/dev/null && npm install --silent --no-audit --no-fund --prefix /tmp/pw playwright-core@1.64.1 >/dev/null && export CHROMIUM_PATH="$(command -v chromium-browser || command -v chromium)" && node scripts/test_revisions.mjs; rev=$?; echo "test_revisions=$rev"; [ $rev -eq 0 ]')
+    & docker @revArgs
+    $revExit = $LASTEXITCODE
+    Write-Host "結果: test_api+test_auth=$apiAuthExit test_revisions=$revExit"
+    $exitCode = if ($apiAuthExit -eq 0 -and $revExit -eq 0) { 0 } else { 1 }
 }
 finally {
     foreach ($name in $secretVars) { [Environment]::SetEnvironmentVariable($name, $null) }

@@ -1,12 +1,14 @@
 pub mod actual_costs;
 pub mod auth;
 pub mod projects;
+pub mod revisions;
+pub mod schema;
 
 use axum::{
     extract::{rejection::JsonRejection, FromRequest, Request, State},
     http::{StatusCode, Uri},
     response::{IntoResponse, Response},
-    routing::{get, post},
+    routing::{get, post, put},
     Json, Router,
 };
 use sirius_reborn_backend::domain::types::ErrorResponse;
@@ -147,6 +149,57 @@ pub fn router(pool: PgPool) -> Router {
         .route(
             "/api/v1/costs/equipment-movement",
             post(actual_costs::submit_equipment_movement),
+        )
+        // 予算・発注の登録と承認（Phase 4）。状態を変える POST/PUT/DELETE は Content-Type: application/json 必須。
+        .route(
+            "/api/v1/projects",
+            get(revisions::list_projects).post(revisions::create_project),
+        )
+        .route(
+            "/api/v1/projects/:project_code/branches",
+            post(revisions::create_branch),
+        )
+        .route("/api/v1/revision-options", get(revisions::get_revision_options))
+        .route(
+            "/api/v1/projects/:project_code/branches/:branch_code/budget",
+            get(revisions::get_branch_budget),
+        )
+        .route(
+            "/api/v1/projects/:project_code/branches/:branch_code/budget/drafts",
+            post(revisions::create_budget_draft),
+        )
+        .route(
+            "/api/v1/projects/:project_code/branches/:branch_code/budget/drafts/:history_no",
+            put(revisions::update_budget_draft).delete(revisions::delete_budget_draft),
+        )
+        .route(
+            "/api/v1/projects/:project_code/branches/:branch_code/budget/drafts/:history_no/approve",
+            post(revisions::approve_budget_draft),
+        )
+        .route(
+            "/api/v1/projects/:project_code/branches/:branch_code/budget/drafts/:history_no/reject",
+            post(revisions::reject_budget_draft),
+        )
+        .route(
+            "/api/v1/projects/:project_code/branches/:branch_code/orders",
+            get(revisions::get_branch_orders),
+        )
+        .route("/api/v1/orders", post(revisions::create_order))
+        .route(
+            "/api/v1/orders/:order_number/drafts",
+            post(revisions::create_order_revision),
+        )
+        .route(
+            "/api/v1/orders/:order_number/drafts/:history_no",
+            put(revisions::update_order_draft).delete(revisions::delete_order_draft),
+        )
+        .route(
+            "/api/v1/orders/:order_number/drafts/:history_no/approve",
+            post(revisions::approve_order_draft),
+        )
+        .route(
+            "/api/v1/orders/:order_number/drafts/:history_no/reject",
+            post(revisions::reject_order_draft),
         )
         .route("/api", axum::routing::any(api_not_found))
         .route("/api/*path", axum::routing::any(api_not_found))
