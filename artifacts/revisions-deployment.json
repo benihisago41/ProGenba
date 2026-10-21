@@ -1,0 +1,69 @@
+{
+  "passed": true,
+  "deployed_at": "2026-10-21T11:24:13Z",
+  "source_commit": "f04b1c7",
+  "includes": [
+    "PR #9: trial acceptance fixes (completion status display by role, quantity reset on item switch and after registration, Cache-Control no-cache for static files)",
+    "PR #10: project registration and two-step budget/order revisions with revision_events (003)"
+  ],
+  "environment": "running progenba Compose project on the Windows PC recorded in fresh-start.json physical_other_pc_verification",
+  "steps": [
+    "backup live DB with scripts/backup_db.ps1",
+    "build new app image with docker compose build app while the old app kept running",
+    "rehearse: restore the backup into an isolated DB and start the new image against it (scripts/restore_db.ps1 -Cleanup)",
+    "record full-row digests of the live tables",
+    "switch with docker compose up -d --wait (progenba_pgdata volume reused)",
+    "compare digests and check HTTP behaviour"
+  ],
+  "backup": {
+    "file": "%OneDrive%\\ProGenba-backups\\progenba_20261021T111950Z.dump",
+    "bytes": 50268,
+    "sha256": "a262dc828f1c6ba270152308f7e92e64ae0ef8aa0331f33e8c0f535dc9439acb",
+    "seconds": 1.8
+  },
+  "images": {
+    "previous_app_image": "sha256:bdda63af522a1421fdd540bf4d64f21882023a7477c6d5b044cfc67bc313808e",
+    "deployed_app_image": "sha256:87d9e46ddc0aead1b94cdac291a892a8131a22792f15b1491db0727450a3bb30",
+    "image_build_seconds": 133
+  },
+  "first_rehearsal_attempt": {
+    "passed": false,
+    "db_diff_lines": 2,
+    "cause": "scripts/compare_restore.sql compared constraint definitions as raw text; pg_dump/pg_restore re-renders the varchar IN-list CHECK chk_app_users_role with different casts ((ARRAY['viewer'::character varying, ...])::text[] vs ARRAY[('viewer'::character varying)::text, ...]) although the meaning is identical",
+    "data_tables_identical": true,
+    "first_time_exercised": "first restore of a dump that already contained the auth tables",
+    "resolution": "normalize constraint definitions (drop casts, parentheses and whitespace) before hashing in scripts/compare_restore.sql, then rerun the rehearsal"
+  },
+  "rehearsal": {
+    "checked_at": "2026-10-21T11:23:48Z",
+    "passed": true,
+    "restore_seconds": 4.8,
+    "tables_compared": 15,
+    "schema_objects_compared": 95,
+    "db_diff_lines": 0,
+    "restored_cockpit_http_status": 200,
+    "restored_cockpit_totals": {
+      "company_code": "0000",
+      "branches": 2,
+      "execution_budget_total": 41500000,
+      "actual_cost_total": 0,
+      "forecast_gross_profit_total": 13500000
+    }
+  },
+  "post_deploy_checks": {
+    "tables_compared_excluding_new_revision_events": 15,
+    "table_digest_diff_lines": 0,
+    "revision_events_created": true,
+    "app_users_count": 1,
+    "existing_session_kept": true,
+    "health_http_status": 200,
+    "unauthenticated_new_endpoints_status": 401,
+    "static_cache_control": "no-cache",
+    "bundle_contains_revisions_tab": true,
+    "bundle_contains_role_aware_completion_label": true,
+    "browser_shows_login_screen_not_blank": true,
+    "app_log_errors": 0
+  },
+  "rollback": "stop app, restore progenba_20261021T111950Z.dump per artifacts/BACKUP_RESTORE.md, and run the previous image; revision_events is a new table and does not affect business tables",
+  "other_containers_or_volumes_modified": false
+}

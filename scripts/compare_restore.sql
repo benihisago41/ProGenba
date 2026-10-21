@@ -10,7 +10,11 @@ SELECT format(
 FROM pg_tables WHERE schemaname = 'public' AND tablename <> 'app_sessions' ORDER BY tablename
 \gexec
 -- 制約（主キー・外部キー・CHECK）
-SELECT 'constraint', conrelid::regclass::text || '.' || conname, 1, md5(pg_get_constraintdef(oid))
+-- 定義文字列は型キャスト表記・括弧・空白を除いて比較する。varchar 列の IN (...) は pg_dump → 復元で
+-- 「(ARRAY['a'::character varying])::text[]」が「ARRAY[('a'::character varying)::text]」に変わるなど、
+-- 意味が同じでも表記が変わるため（2026-10-21 の反映リハーサルで chk_app_users_role が誤検知された）。
+SELECT 'constraint', conrelid::regclass::text || '.' || conname, 1,
+       md5(regexp_replace(regexp_replace(pg_get_constraintdef(oid), '::[a-z ]+(\[\])?', '', 'g'), '[()[:space:]]', '', 'g'))
 FROM pg_constraint WHERE connamespace = 'public'::regnamespace ORDER BY 2;
 -- トリガー（承認済み改定の上書き禁止など）
 SELECT 'trigger', tgrelid::regclass::text || '.' || tgname, 1, md5(pg_get_triggerdef(oid))

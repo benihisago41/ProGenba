@@ -35,6 +35,7 @@
 
 ## 稼働と次の操作
 - 2026-10-21、稼働中のprogenbaへ認証（PR #6、e5c4275）を反映した。手順は、バックアップ取得 → 新イメージを先にビルド → 稼働DBのバックアップを別DBに戻して新イメージでリハーサル → `docker compose up -d`。業務14テーブルの全行ダイジェストは反映の前後で一致した。記録はauth-deployment.json。反映直後は利用者0人で、最初の利用者はscripts/add_user.ps1で作成する。
+- 2026-10-21、同じ手順で受入の修正3件（PR #9）と予算・発注の登録と承認（PR #10、f04b1c7）を反映した。DBのテーブルは反映の前後で全行一致し、操作履歴テーブルrevision_eventsが追加された。初回リハーサルは照合スクリプトの制約定義の表記差で誤検知したため、scripts/compare_restore.sqlを正規化してから再実施した。記録はrevisions-deployment.json。
 - progenba-app-1: http://127.0.0.1:8080。progenba-db-1: PostgreSQL16、ホストポート非公開、progenba_pgdataで永続化。
 - 停止・再開は本体でdocker compose stop / docker compose start。初期構築はREADME.mdのscripts/start_local.ps1。
 - Gate2/3の開発用再検証には専用DB環境の再作成が必要。実データDBで受入スクリプトを実行しない。
