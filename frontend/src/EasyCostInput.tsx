@@ -21,6 +21,8 @@ export interface EasyCostInputProps {
   projects: ProjectCostCockpitDto[];
   companyCode: string;
   onRegistered: () => Promise<void>;
+  /** 完成区分1（完成）の工事へ登録できるか（承認権限）。省略時は従来どおり登録可として扱う */
+  canRegisterCompleted?: boolean;
 }
 
 type InputMode = "subcontract" | "direct" | "daily" | "equipment";
@@ -46,12 +48,17 @@ function formatYen(amount: YenAmount): string {
   return `¥${amount.toLocaleString("ja-JP")}`;
 }
 
-function completionStatusLabel(status: CompletionStatus): string {
+function completionStatusLabel(
+  status: CompletionStatus,
+  canRegisterCompleted: boolean
+): string {
   switch (status) {
     case "0":
       return "未成（登録可）";
     case "1":
-      return "完成（警告付き登録可）";
+      return canRegisterCompleted
+        ? "完成（警告付き登録可）"
+        : "完成（承認権限のみ登録可）";
     case "2":
       return "前期完成（登録不可）";
     case "3":
@@ -59,8 +66,18 @@ function completionStatusLabel(status: CompletionStatus): string {
   }
 }
 
-function isBranchLocked(status: CompletionStatus): boolean {
-  return status === "2" || status === "3";
+// 完成区分2/3は全員登録不可。区分1は承認権限のない利用者には登録不可（サーバーも403で拒否する）
+function isBranchLocked(
+  status: CompletionStatus,
+  canRegisterCompleted: boolean
+): boolean {
+  return status === "2" || status === "3" || (status === "1" && !canRegisterCompleted);
+}
+
+function lockedBranchMessage(status: CompletionStatus): string {
+  return status === "1"
+    ? "選択された工事枝番は完成（区分1）のため、承認権限の利用者のみ原価を登録できます。"
+    : "選択された工事枝番は前期完成または計上ロック済のため、原価を登録できません。";
 }
 
 function isValidDateYmd(val: string): boolean {
@@ -171,6 +188,7 @@ export const EasyCostInput: React.FC<EasyCostInputProps> = ({
   projects,
   companyCode,
   onRegistered,
+  canRegisterCompleted = true,
 }) => {
   const [lookups, setLookups] = useState<LookupsDto | null>(null);
   const [lookupsLoading, setLookupsLoading] = useState<boolean>(true);
@@ -190,7 +208,7 @@ export const EasyCostInput: React.FC<EasyCostInputProps> = ({
   // 工事・枝番の選択状態（完成2/3でない最初の枝番を初期選択）
   const [selectedBranchKey, setSelectedBranchKey] = useState<string>(() => {
     const firstWritable = projects.find(
-      (p) => !isBranchLocked(p.completion_status)
+      (p) => !isBranchLocked(p.completion_status, canRegisterCompleted)
     );
     const target = firstWritable ?? projects[0];
     return target ? `${target.key.project_code}::${target.key.branch_code}` : "";
@@ -203,7 +221,7 @@ export const EasyCostInput: React.FC<EasyCostInputProps> = ({
     );
     if (!exists) {
       const firstWritable = projects.find(
-        (p) => !isBranchLocked(p.completion_status)
+        (p) => !isBranchLocked(p.completion_status, canRegisterCompleted)
       );
       const target = firstWritable ?? projects[0];
       if (target) {
@@ -539,9 +557,9 @@ export const EasyCostInput: React.FC<EasyCostInputProps> = ({
       setSubmitError("対象の工事・枝番を選択してください。");
       return;
     }
-    if (isBranchLocked(selectedProject.completion_status)) {
+    if (isBranchLocked(selectedProject.completion_status, canRegisterCompleted)) {
       setSubmitError(
-        "選択された工事枝番は前期完成または計上ロック済のため、原価を登録できません。"
+        lockedBranchMessage(selectedProject.completion_status)
       );
       return;
     }
@@ -626,6 +644,8 @@ export const EasyCostInput: React.FC<EasyCostInputProps> = ({
     setDirectWorkTypeCode(tpl.work_type_code);
     setDirectCostElement(tpl.cost_element_code);
     setDirectUnit(tpl.default_unit);
+    // 前の品目の数量を引き継がない（例: 生コン100m3の後に産廃を選ぶと100式になる誤登録を防ぐ）
+    setDirectQuantity("1");
     try {
       const priceDec = new Decimal(tpl.default_unit_price);
       setDirectUnitPrice(priceDec.toString());
@@ -734,9 +754,9 @@ export const EasyCostInput: React.FC<EasyCostInputProps> = ({
       setSubmitError("対象の工事・枝番を選択してください。");
       return;
     }
-    if (isBranchLocked(selectedProject.completion_status)) {
+    if (isBranchLocked(selectedProject.completion_status, canRegisterCompleted)) {
       setSubmitError(
-        "選択された工事枝番は前期完成または計上ロック済のため、原価を登録できません。"
+        lockedBranchMessage(selectedProject.completion_status)
       );
       return;
     }
@@ -789,6 +809,7 @@ export const EasyCostInput: React.FC<EasyCostInputProps> = ({
       });
       setDirectSpecification("");
       setDirectNotes("");
+      setDirectQuantity("1");
       await Promise.all([fetchLookups(true), onRegistered()]);
     } catch (err) {
       setSubmitError(
@@ -923,9 +944,9 @@ export const EasyCostInput: React.FC<EasyCostInputProps> = ({
       setSubmitError("対象の工事・枝番を選択してください。");
       return;
     }
-    if (isBranchLocked(selectedProject.completion_status)) {
+    if (isBranchLocked(selectedProject.completion_status, canRegisterCompleted)) {
       setSubmitError(
-        "選択された工事枝番は前期完成または計上ロック済のため、原価を登録できません。"
+        lockedBranchMessage(selectedProject.completion_status)
       );
       return;
     }
@@ -1098,9 +1119,9 @@ export const EasyCostInput: React.FC<EasyCostInputProps> = ({
       setSubmitError("対象の工事・枝番を選択してください。");
       return;
     }
-    if (isBranchLocked(selectedProject.completion_status)) {
+    if (isBranchLocked(selectedProject.completion_status, canRegisterCompleted)) {
       setSubmitError(
-        "選択された工事枝番は前期完成または計上ロック済のため、原価を登録できません。"
+        lockedBranchMessage(selectedProject.completion_status)
       );
       return;
     }
@@ -1157,7 +1178,7 @@ export const EasyCostInput: React.FC<EasyCostInputProps> = ({
   };
 
   const branchLocked = selectedProject
-    ? isBranchLocked(selectedProject.completion_status)
+    ? isBranchLocked(selectedProject.completion_status, canRegisterCompleted)
     : true;
 
   return (
@@ -1203,11 +1224,11 @@ export const EasyCostInput: React.FC<EasyCostInputProps> = ({
             >
               {projects.map((p) => {
                 const key = `${p.key.project_code}::${p.key.branch_code}`;
-                const locked = isBranchLocked(p.completion_status);
+                const locked = isBranchLocked(p.completion_status, canRegisterCompleted);
                 return (
                   <option key={key} value={key} disabled={locked}>
                     [{p.key.project_code}-{p.key.branch_code}] {p.project_name}（
-                    {p.branch_name}）— {completionStatusLabel(p.completion_status)}
+                    {p.branch_name}）— {completionStatusLabel(p.completion_status, canRegisterCompleted)}
                   </option>
                 );
               })}
@@ -1229,7 +1250,7 @@ export const EasyCostInput: React.FC<EasyCostInputProps> = ({
               <span
                 className={`status-badge status-${selectedProject.completion_status}`}
               >
-                {completionStatusLabel(selectedProject.completion_status)}
+                {completionStatusLabel(selectedProject.completion_status, canRegisterCompleted)}
               </span>
               <span style={{ fontSize: "0.88rem", fontWeight: 700 }}>
                 実行予算: {formatYen(selectedProject.execution_budget_amount)}
@@ -1241,7 +1262,7 @@ export const EasyCostInput: React.FC<EasyCostInputProps> = ({
           )}
         </div>
 
-        {selectedProject?.completion_status === "1" && (
+        {selectedProject?.completion_status === "1" && canRegisterCompleted && (
           <div
             className="alert-banner alert-warning"
             style={{ marginTop: "12px" }}
@@ -1260,7 +1281,10 @@ export const EasyCostInput: React.FC<EasyCostInputProps> = ({
             role="alert"
           >
             <span>
-              ⛔ 選択された工事枝番は「前期完成」または「計上ロック済」のため、新規の原価登録はできません。未成または当期完成の工事枝番を選択してください。
+              ⛔{" "}
+              {selectedProject?.completion_status === "1"
+                ? "選択された工事枝番は「完成（区分1）」のため、承認権限の利用者のみ原価を登録できます。未成の工事枝番を選択してください。"
+                : "選択された工事枝番は「前期完成」または「計上ロック済」のため、新規の原価登録はできません。未成または当期完成の工事枝番を選択してください。"}
             </span>
           </div>
         )}

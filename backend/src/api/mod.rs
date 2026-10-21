@@ -12,7 +12,10 @@ use axum::{
 use sirius_reborn_backend::domain::types::ErrorResponse;
 use sqlx::PgPool;
 use std::path::PathBuf;
-use tower_http::services::{ServeDir, ServeFile};
+use tower_http::{
+    services::{ServeDir, ServeFile},
+    set_header::SetResponseHeader,
+};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -112,6 +115,14 @@ pub fn router(pool: PgPool) -> Router {
     let static_dir = std::env::var("STATIC_DIR").unwrap_or_else(|_| "./static".to_string());
     let index_file = PathBuf::from(&static_dir).join("index.html");
     let serve_dir = ServeDir::new(&static_dir).not_found_service(ServeFile::new(index_file));
+    // 画面ファイルは毎回サーバーへ確認させる（no-cache）。キャッシュした古い index.html が
+    // 更新後に存在しない旧バンドルを参照し、画面が真っ白になるのを防ぐ。
+    // 変更がなければ Last-Modified による 304 応答で済むため、転送量はほぼ増えない。
+    let serve_dir = SetResponseHeader::overriding(
+        serve_dir,
+        axum::http::header::CACHE_CONTROL,
+        axum::http::HeaderValue::from_static("no-cache"),
+    );
 
     Router::new()
         // 認証不要: health と login/logout。それ以外の業務APIは AuthContext で 401/403 を判定する。
