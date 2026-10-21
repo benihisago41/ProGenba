@@ -337,7 +337,7 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps> = ({ session, onLogout }
                 style={{ marginBottom: "12px" }}
               >
                 <span>
-                  完成区分が「完成(1)」の工事への登録は承認権限の利用者のみ可能です（登録しようとするとサーバーで拒否されます）。
+                  完成区分が「完成(1)」の工事への登録は承認権限の利用者のみ可能です（その工事は選択できません）。
                 </span>
               </div>
             ) : null}
@@ -345,6 +345,7 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps> = ({ session, onLogout }
               projects={projects}
               companyCode={companyCode}
               onRegistered={handleRegistered}
+              canRegisterCompleted={canRegisterCompleted(session.role)}
             />
           </>
         )}
