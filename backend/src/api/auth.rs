@@ -20,7 +20,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use sqlx::{Executor, PgPool, Row};
+use sqlx::{PgPool, Row};
 use std::sync::OnceLock;
 
 use crate::api::{ApiError, AppJson, AppState};
@@ -307,10 +307,7 @@ pub fn is_valid_user_id(id: &str) -> bool {
 // マイグレーション
 // ---------------------------------------------------------------------------
 
-/// 002_auth.sql を適用する（冪等）。引数なしの単純問い合わせで複数文を実行する。
-pub async fn apply_auth_migration(pool: &PgPool) -> Result<(), sqlx::Error> {
-    pool.execute(AUTH_MIGRATION_SQL).await.map(|_| ())
-}
+// 002_auth.sql の適用は api::schema::apply_startup_migrations（003 以降と同じ経路）で行う。
 
 // ---------------------------------------------------------------------------
 // API

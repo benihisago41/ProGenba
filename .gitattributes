@@ -5,3 +5,4 @@ backend/src/domain/types.rs text eol=lf
 frontend/src/bindings.ts text eol=lf
 scripts/start_local.sh text eol=lf
 migrations/002_auth.sql text eol=lf
+migrations/003_revision_workflow.sql text eol=lf

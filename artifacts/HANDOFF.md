@@ -35,8 +35,10 @@
 
 ## 稼働と次の操作
 - 2026-10-21、稼働中のprogenbaへ認証（PR #6、e5c4275）を反映した。手順は、バックアップ取得 → 新イメージを先にビルド → 稼働DBのバックアップを別DBに戻して新イメージでリハーサル → `docker compose up -d`。業務14テーブルの全行ダイジェストは反映の前後で一致した。記録はauth-deployment.json。反映直後は利用者0人で、最初の利用者はscripts/add_user.ps1で作成する。
+- 2026-10-21、同じ手順で受入の修正3件（PR #9）と予算・発注の登録と承認（PR #10、f04b1c7）を反映した。DBのテーブルは反映の前後で全行一致し、操作履歴テーブルrevision_eventsが追加された。初回リハーサルは照合スクリプトの制約定義の表記差で誤検知したため、scripts/compare_restore.sqlを正規化してから再実施した。記録はrevisions-deployment.json。
 - progenba-app-1: http://127.0.0.1:8080。progenba-db-1: PostgreSQL16、ホストポート非公開、progenba_pgdataで永続化。
 - 停止・再開は本体でdocker compose stop / docker compose start。初期構築はREADME.mdのscripts/start_local.ps1。
 - Gate2/3の開発用再検証には専用DB環境の再作成が必要。実データDBで受入スクリプトを実行しない。
 - 記録整備の統合と、その後の別フェーズの具体的な指示はNEXT_ACTIONS.md。業務機能の追加を今回の完了条件に混ぜない。
-- 認証・権限・会社境界はPhase 3で実装した（2026-10-21）。会社コード＋利用者ID＋パスワードでログインし、閲覧/登録/承認の3役割で、会社コードはサーバーのセッションで判定する。利用者はscripts/add_user.ps1で作成する（画面での利用者管理はない）。HTTP運用のため通信の暗号化はなく、総当たり対策は利用者単位の一時ロックだけ。詳細はREADMEの「認証・権限・会社境界」、証拠はauth-acceptance.json。マスタ・予算・発注編集、月次確定賃金入力、実データ移行、監視・監査ログは対象外。復元検証は認証導入後、稼働系APIとの比較をやめ、全行照合＋復元側アプリでの取得確認に変えた（BACKUP_RESTORE.md）。バックアップはscripts/backup_db.ps1とrestore_db.ps1で取得・別DB復元・全行照合まで確認済み（BACKUP_RESTORE.md、backup-restore.json）。定期実行は未登録。物理スマホ/LAN別端末・負荷試験は未実行。限定された社内検証用。
+- 認証・権限・会社境界はPhase 3で実装した（2026-10-21）。会社コード＋利用者ID＋パスワードでログインし、閲覧/登録/承認の3役割で、会社コードはサーバーのセッションで判定する。利用者はscripts/add_user.ps1で作成する（画面での利用者管理はない）。HTTP運用のため通信の暗号化はなく、総当たり対策は利用者単位の一時ロックだけ。詳細はREADMEの「認証・権限・会社境界」、証拠はauth-acceptance.json。マスタ編集、月次確定賃金入力、実データ移行、監視・監査ログは対象外。復元検証は認証導入後、稼働系APIとの比較をやめ、全行照合＋復元側アプリでの取得確認に変えた（BACKUP_RESTORE.md）。バックアップはscripts/backup_db.ps1とrestore_db.ps1で取得・別DB復元・全行照合まで確認済み（BACKUP_RESTORE.md、backup-restore.json）。定期実行は未登録。物理スマホ/LAN別端末・負荷試験は未実行。限定された社内検証用。
+- 予算・発注の登録と承認（Phase 4、ブランチ ai/claude/budget-order-revisions、未コミット・未PR）: 工事・枝番の登録（承認権限）、実行予算・外注発注の案（登録権限）→承認／否認（承認権限）の2段階を追加した。承認済みの版は上書きせず履歴番号+1の新しい版で改定し、集計は従来どおり承認済みの最新版だけを使う。操作履歴は migrations/003_revision_workflow.sql の revision_events（追記専用、既存DBへは起動時に自動適用）。稼働中の progenba への反映は未実施（反映時は認証反映と同じく、バックアップ→リハーサル→`docker compose up -d --build`）。試験結果は revisions-acceptance.json、仕様と残課題は README の「予算・発注の登録と承認」。
