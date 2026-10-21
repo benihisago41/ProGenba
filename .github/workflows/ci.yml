@@ -83,6 +83,25 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Calculation regression
+        run: npm run test:calculations
+
+      - name: Install browser
+        run: npx playwright install --with-deps chromium
+
+      - name: UI regression
+        env:
+          SIRIUS_TEST_URL: http://127.0.0.1:4173
+        run: |
+          npm exec vite preview -- --host 127.0.0.1 --port 4173 &
+          server_pid=$!
+          trap 'kill "$server_pid"' EXIT
+          for attempt in $(seq 1 30); do
+            if curl --silent --fail http://127.0.0.1:4173/ >/dev/null; then break; fi
+            sleep 1
+          done
+          npm run test:ui
+
   auth-integration:
     name: Auth Integration
     runs-on: ubuntu-latest

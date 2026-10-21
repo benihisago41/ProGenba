@@ -61,14 +61,21 @@ if ($LASTEXITCODE -eq 0) { throw "$vol が既に存在します。不要なら -
 $global:LASTEXITCODE = 0
 
 $pw = [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(24)).ToLowerInvariant()
+$savedEnv = @{}
+foreach ($name in @('POSTGRES_PASSWORD', 'DATABASE_URL')) {
+    $savedEnv[$name] = [Environment]::GetEnvironmentVariable($name)
+}
 $result = [ordered]@{ passed = $false; dump_file = (Split-Path -Leaf $DumpFile); dump_sha256 = $actual; dump_bytes = (Get-Item -LiteralPath $DumpFile).Length }
 try {
+    # Docker には環境変数名だけを渡し、秘密をプロセスの引数に残さない。
+    $env:POSTGRES_PASSWORD = $pw
+    $env:DATABASE_URL = "postgres://sirius:$pw@${dbName}:5432/sirius_reborn"
     # 2. 空DBの作成と復元（復旧時間＝空DB作成開始から復元完了まで）
     $timer = [Diagnostics.Stopwatch]::StartNew()
     Invoke-Docker network create --label $label $net | Out-Null
     Invoke-Docker volume create --label $label $vol | Out-Null
     Invoke-Docker run -d --name $dbName --label $label --network $net `
-        -e POSTGRES_USER=sirius -e "POSTGRES_PASSWORD=$pw" -e POSTGRES_DB=sirius_reborn `
+        -e POSTGRES_USER=sirius -e POSTGRES_PASSWORD -e POSTGRES_DB=sirius_reborn `
         -e 'POSTGRES_INITDB_ARGS=--encoding=UTF8 --locale=C' -e LANG=C.UTF-8 `
         -v "${vol}:/var/lib/postgresql/data" postgres:16-alpine | Out-Null
     Wait-Until { & docker exec $dbName pg_isready -h 127.0.0.1 -U sirius -d sirius_reborn *> $null; $LASTEXITCODE -eq 0 } 90 '復元先DBの起動がタイムアウトしました。'
@@ -105,7 +112,7 @@ try {
     #    同じ入力から同じ集計を返す（コックピットはDBの業務テーブルだけから決定的に計算され、乱数・時刻に依存しない）。
     #    ここでは復元側アプリが実際に起動し、認証を通して全会社の集計を返せることと、その値を記録する。
     Invoke-Docker run -d --name $appName --label $label --network $net `
-        -e "DATABASE_URL=postgres://sirius:$pw@${dbName}:5432/sirius_reborn" -e STATIC_DIR=/app/static `
+        -e DATABASE_URL -e STATIC_DIR=/app/static `
         -p "127.0.0.1:${AppPort}:8080" $AppImage | Out-Null
     $pw = $null
     $result.app_image = $AppImage
@@ -141,6 +148,10 @@ try {
 }
 finally {
     $pw = $null
+    foreach ($name in $savedEnv.Keys) {
+        [Environment]::SetEnvironmentVariable($name, $savedEnv[$name])
+    }
+    $savedEnv.Clear()
     if ($Cleanup) { Remove-RestoreAssets; $result.cleaned_up = $true }
 }
 $result.checked_at = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
