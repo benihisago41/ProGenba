@@ -6,12 +6,17 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:ui": "node tests/ui-regression.mjs",
+    "test:calculations": "node tests/cockpit-calculations.mjs"
   },
   "dependencies": {
+    "@fluentui/react-components": "^9.74.10",
+    "@fluentui/react-icons": "^2.0.344",
     "decimal.js": "^10.4.3",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "swr": "^2.5.1"
   },
   "devDependencies": {
     "@types/react": "^18.3.3",

@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { App } from "./App";
+import { Providers } from "./ui";
 
 const rootElement = document.getElementById("root");
 if (!rootElement) {
@@ -9,6 +10,6 @@ if (!rootElement) {
 
 ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
-    <App />
+    <Providers><App /></Providers>
   </React.StrictMode>
 );

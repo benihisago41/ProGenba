@@ -1,357 +1,118 @@
-import React, { useCallback, useEffect, useState } from "react";
-import {
-  API_ENDPOINTS,
-  ErrorResponse,
-  LookupsDto,
-  ProjectCostCockpitDto,
-} from "./bindings";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import useSWR, { SWRConfig } from "swr";
+import { Avatar, Badge, Body1, Button, Caption1, Divider, Spinner, Title3, makeStyles, mergeClasses, tokens, useRestoreFocusTarget } from "@fluentui/react-components";
+import { Add24Regular, ArrowSync20Regular, Building24Regular, Grid24Regular, SignOut20Regular } from "@fluentui/react-icons";
 import { CockpitView } from "./CockpitView";
 import { EasyCostInput, EasyCostInputProps } from "./EasyCostInput";
-import {
-  apiFetch,
-  canRegisterCompleted,
-  canRegisterCost,
-  fetchMe,
-  logout,
-  MeResponse,
-  roleLabel,
-  setUnauthorizedHandler,
-} from "./auth";
+import { canRegisterCompleted, canRegisterCost, fetchMe, logout, MeResponse, roleLabel, setUnauthorizedHandler } from "./auth";
 import { LoginView } from "./LoginView";
-
-type ActiveTab = "cockpit" | "easy-input";
-
+import { ProjectSelection, useProjectData } from "./data";
+import { ConfirmDialog, Notice, ThemeButton, usePageStyles } from "./ui";
 export type { EasyCostInputProps };
 
-async function parseApiError(res: Response): Promise<string> {
-  try {
-    const err = (await res.json()) as Partial<ErrorResponse>;
-    if (err && typeof err.message === "string" && err.message.trim() !== "") {
-      return err.message;
-    }
-  } catch {
-    // ignore JSON parse failure
-  }
-  return `サーバー通信エラーが発生しました（HTTP ${res.status}）`;
-}
-
-// セッション確認中は undefined、未ログインは null
-type SessionState = MeResponse | null | undefined;
+const useStyles = makeStyles({
+  root: { minHeight: "100vh", display: "flex", flexDirection: "column" },
+  header: { display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: tokens.spacingHorizontalL, minHeight: "68px", paddingLeft: tokens.spacingHorizontalXXL, paddingRight: tokens.spacingHorizontalXXL, paddingTop: tokens.spacingVerticalS, paddingBottom: tokens.spacingVerticalS, backgroundColor: tokens.colorNeutralBackground1, borderBottom: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke2}` },
+  mark: { display: "flex", alignItems: "center", justifyContent: "center", width: "36px", height: "36px", borderRadius: tokens.borderRadiusLarge, color: tokens.colorNeutralForegroundOnBrand, backgroundColor: tokens.colorBrandBackground },
+  workspace: { display: "flex", flex: 1, minWidth: 0, '@media (max-width: 800px)': { flexDirection: "column" } },
+  sidebar: { display: "flex", flexDirection: "column", width: "220px", flexShrink: 0, backgroundColor: tokens.colorNeutralBackground1, borderRight: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke2}`, paddingTop: tokens.spacingVerticalXXL, paddingBottom: tokens.spacingVerticalL, paddingLeft: tokens.spacingHorizontalM, paddingRight: tokens.spacingHorizontalM, rowGap: tokens.spacingVerticalS, '@media (max-width: 800px)': { width: "100%", borderRightWidth: 0, paddingTop: tokens.spacingVerticalS, paddingBottom: tokens.spacingVerticalS } },
+  nav: { display: "flex", flexDirection: "column", gap: tokens.spacingVerticalXS, '@media (max-width: 800px)': { flexDirection: "row", flexWrap: "wrap" } },
+  navButton: { justifyContent: "flex-start", minHeight: "48px", borderRadius: tokens.borderRadiusMedium },
+  active: { color: tokens.colorBrandForeground1, backgroundColor: tokens.colorBrandBackground2 },
+  sidebarFoot: { marginTop: "auto", paddingTop: tokens.spacingVerticalXXXL, paddingLeft: tokens.spacingHorizontalM, paddingRight: tokens.spacingHorizontalM, '@media (max-width: 800px)': { display: "none" } },
+  main: { flex: 1, minWidth: 0, paddingTop: tokens.spacingVerticalXXXL, paddingBottom: tokens.spacingVerticalXXXL, paddingLeft: tokens.spacingHorizontalXXXL, paddingRight: tokens.spacingHorizontalXXXL, '@media (max-width: 640px)': { paddingLeft: tokens.spacingHorizontalL, paddingRight: tokens.spacingHorizontalL, paddingTop: tokens.spacingVerticalXXL } },
+  content: { maxWidth: "1440px", marginLeft: "auto", marginRight: "auto", minWidth: 0 },
+  session: { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", paddingLeft: tokens.spacingHorizontalL, paddingRight: tokens.spacingHorizontalL },
+  user: { '@media (max-width: 600px)': { display: "none" } },
+  skip: { position: "absolute", top: "-100px", left: tokens.spacingHorizontalL, zIndex: 10, backgroundColor: tokens.colorNeutralBackground1, color: tokens.colorBrandForeground1, paddingTop: tokens.spacingVerticalM, paddingBottom: tokens.spacingVerticalM, paddingLeft: tokens.spacingHorizontalL, paddingRight: tokens.spacingHorizontalL, ':focus': { top: tokens.spacingVerticalS } },
+});
 
 export const App: React.FC = () => {
-  const [session, setSession] = useState<SessionState>(undefined);
+  const { data: session, error, mutate, isLoading } = useSWR("progenba-session", fetchMe, { shouldRetryOnError: false, revalidateOnFocus: false });
   const [loginNotice, setLoginNotice] = useState<string | null>(null);
-
+  const styles = useStyles(); const p = usePageStyles();
   useEffect(() => {
-    // 業務APIが 401 を返したらログイン画面へ戻す
-    setUnauthorizedHandler(() => {
-      setLoginNotice("ログインの有効期限が切れました。再度ログインしてください。");
-      setSession(null);
-    });
-    let cancelled = false;
-    fetchMe()
-      .then((me) => {
-        if (!cancelled) setSession(me);
-      })
-      .catch(() => {
-        if (!cancelled) setSession(null);
-      });
-    return () => {
-      cancelled = true;
-      setUnauthorizedHandler(null);
-    };
-  }, []);
-
+    setUnauthorizedHandler(() => { setLoginNotice("ログインの有効期限が切れました。再度ログインしてください。入力途中の内容は安全のため破棄しました。"); void mutate(null, false); });
+    return () => setUnauthorizedHandler(null);
+  }, [mutate]);
   const handleLogout = useCallback(async () => {
-    try {
-      await logout();
-    } catch {
-      // 通信失敗時も画面はログイン画面へ戻す（サーバー側は無操作8時間で失効）
-    } finally {
-      setLoginNotice("ログアウトしました。");
-      setSession(null);
-    }
-  }, []);
-
-  if (session === undefined) {
-    return (
-      <div className="app-shell">
-        <main className="app-main">
-          <section className="card state-box" aria-live="polite">
-            <p style={{ margin: 0 }}>ログイン状態を確認しています...</p>
-          </section>
-        </main>
-      </div>
-    );
-  }
-
-  if (session === null) {
-    return (
-      <LoginView
-        notice={loginNotice}
-        onLoggedIn={(me) => {
-          setLoginNotice(null);
-          setSession(me);
-        }}
-      />
-    );
-  }
-
-  // 利用者が変わったら画面状態を作り直す
-  return (
-    <AuthenticatedApp
-      key={`${session.company_code}:${session.user_id}`}
-      session={session}
-      onLogout={handleLogout}
-    />
-  );
+    try { await logout(); setLoginNotice("ログアウトしました。"); }
+    catch { setLoginNotice("この端末の入力は破棄しましたが、サーバー側のログアウトを確認できませんでした。通信状況をご確認ください。"); }
+    finally { void mutate(null, false); }
+  }, [mutate]);
+  if (isLoading) return <main className={styles.session}><Spinner label="ログイン状態を確認しています…" /></main>;
+  if (error) return <main className={styles.session}><div className={p.compact}><Notice intent="error">ログイン状態を確認できませんでした。通信状況をご確認ください。</Notice><Button size="large" onClick={() => void mutate()}>もう一度確認する</Button></div></main>;
+  if (!session) return <LoginView notice={loginNotice} onLoggedIn={me => { setLoginNotice(null); void mutate(me, false); }} />;
+  return <SessionWorkspace key={`${session.company_code}:${session.user_id}`} session={session} onLogout={handleLogout} />;
 };
 
-interface AuthenticatedAppProps {
-  session: MeResponse;
-  onLogout: () => Promise<void>;
+function SessionWorkspace(props: { session: MeResponse; onLogout: () => Promise<void> }) {
+  // 会社・利用者が変わる際、取得データのキャッシュも一緒に破棄する。
+  const cache = useMemo(() => new Map(), []);
+  return <SWRConfig value={{ provider: () => cache }}><AuthenticatedApp {...props} /></SWRConfig>;
 }
 
-const AuthenticatedApp: React.FC<AuthenticatedAppProps> = ({ session, onLogout }) => {
-  // 会社コードはサーバーのセッション（/auth/me）から取得した値のみを使う
-  const companyCode = session.company_code;
+function AuthenticatedApp({ session, onLogout }: { session: MeResponse; onLogout: () => Promise<void> }) {
+  const s = useStyles(); const p = usePageStyles();
+  const restoreFocus = useRestoreFocusTarget();
+  const { cockpit, lookups, refresh } = useProjectData(session.company_code);
+  const projects = cockpit.data ?? [];
+  const [activeTab, setActiveTab] = useState<"cockpit" | "input">("cockpit");
+  const [selection, setSelection] = useState<ProjectSelection | null>(null);
+  const current = selection ?? { projectCode: projects[0]?.key.project_code ?? "", branchCode: projects[0]?.key.branch_code ?? "000" };
+  const [dirty, setDirty] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [draftVersion, setDraftVersion] = useState(0);
+  const [pending, setPending] = useState<ProjectSelection | "logout" | null>(null);
+  const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshFailed, setRefreshFailed] = useState(false);
   const mayRegister = canRegisterCost(session.role);
-  const [activeTab, setActiveTab] = useState<ActiveTab>("cockpit");
-
-  const [projects, setProjects] = useState<ProjectCostCockpitDto[]>([]);
-  const [, setLookups] = useState<LookupsDto | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  const fetchCockpitAndLookups = useCallback(
-    async (background = false) => {
-      if (!background) {
-        setIsLoading(true);
-        setErrorMessage(null);
-      }
-      try {
-        const query = `?company_code=${encodeURIComponent(companyCode)}`;
-        const [cockpitRes, lookupsRes] = await Promise.all([
-          apiFetch(`${API_ENDPOINTS.COCKPIT}${query}`, {
-            headers: { Accept: "application/json" },
-          }),
-          apiFetch(`${API_ENDPOINTS.MASTER_LOOKUPS}${query}`, {
-            headers: { Accept: "application/json" },
-          }),
-        ]);
-
-        if (!cockpitRes.ok) {
-          const msg = await parseApiError(cockpitRes);
-          throw new Error(msg);
-        }
-
-        const cockpitData = (await cockpitRes.json()) as ProjectCostCockpitDto[];
-        setProjects(Array.isArray(cockpitData) ? cockpitData : []);
-
-        if (lookupsRes.ok) {
-          const lookupsData = (await lookupsRes.json()) as LookupsDto;
-          setLookups(lookupsData);
-        }
-      } catch (err) {
-        if (!background) {
-          const msg =
-            err instanceof Error
-              ? err.message
-              : "工事原価データの取得中に予期しないエラーが発生しました。";
-          setErrorMessage(msg);
-        }
-      } finally {
-        if (!background) {
-          setIsLoading(false);
-        }
-      }
-    },
-    [companyCode]
-  );
-
   useEffect(() => {
-    void fetchCockpitAndLookups(false);
-  }, [fetchCockpitAndLookups]);
-
-  const handleRegistered = useCallback(async () => {
-    await fetchCockpitAndLookups(true);
-  }, [fetchCockpitAndLookups]);
-
-  return (
-    <div className="app-shell">
-      <header className="app-header">
-        <div className="app-header-inner">
-          <div className="brand-group">
-            <span className="brand-badge">SIRIUS REBORN</span>
-            <div>
-              <h1 className="brand-title">工事原価コックピット</h1>
-              <p className="brand-subtitle">
-                本工事・追加工事の予算・実発生原価・見込粗利リアルタイム可視化
-              </p>
-            </div>
-          </div>
-
-          <nav className="nav-tabs" aria-label="メイン機能切り替え">
-            <button
-              type="button"
-              className={`nav-tab-btn ${activeTab === "cockpit" ? "active" : ""}`}
-              aria-current={activeTab === "cockpit" ? "page" : undefined}
-              onClick={() => setActiveTab("cockpit")}
-            >
-              📊 工事原価コックピット
-            </button>
-            <button
-              type="button"
-              className={`nav-tab-btn ${
-                activeTab === "easy-input" ? "active" : ""
-              }`}
-              aria-current={activeTab === "easy-input" ? "page" : undefined}
-              onClick={() => setActiveTab("easy-input")}
-              disabled={!mayRegister}
-              aria-describedby={mayRegister ? undefined : "register-disabled-reason"}
-              title={mayRegister ? undefined : "閲覧権限のため原価登録はできません"}
-            >
-              ➕ かんたん原価登録（外注出来高・材料・日報・損料）
-            </button>
-            <button
-              type="button"
-              className="nav-tab-btn"
-              onClick={() => {
-                void fetchCockpitAndLookups();
-              }}
-              disabled={isLoading}
-              aria-label="最新の原価データを再取得"
-            >
-              🔄 最新状態に更新
-            </button>
-          </nav>
-
-          <div
-            className="user-bar"
-            aria-label="ログイン中の利用者"
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              alignItems: "center",
-              gap: "8px",
-              fontSize: "0.85rem",
-              minWidth: 0,
-            }}
-          >
-            <span style={{ overflowWrap: "anywhere" }}>
-              👤 {session.display_name ?? session.user_id}（会社 {session.company_code}）
-            </span>
-            <span className="kpi-tag" data-role={session.role}>
-              役割：{roleLabel(session.role)}
-            </span>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              style={{ padding: "4px 12px" }}
-              onClick={() => {
-                void onLogout();
-              }}
-            >
-              ログアウト
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {!mayRegister ? (
-        <p
-          id="register-disabled-reason"
-          className="alert-banner alert-warning"
-          role="note"
-          style={{ margin: "12px auto 0", maxWidth: "1360px", width: "calc(100% - 32px)" }}
-        >
-          閲覧権限のため、原価登録はできません（登録・承認権限の利用者のみ登録できます）。
-        </p>
-      ) : null}
-
-      <main className="app-main">
-        {isLoading ? (
-          <section className="card state-box" aria-live="polite">
-            <p
-              style={{
-                margin: "0 0 8px",
-                fontSize: "1.05rem",
-                fontWeight: 700,
-                color: "var(--text-heading)",
-              }}
-            >
-              工事原価データを読み込んでいます...
-            </p>
-            <p style={{ margin: 0, fontSize: "0.88rem", color: "var(--text-muted)" }}>
-              最新の実行予算・発注コミット額・実発生原価を集計しています
-            </p>
-          </section>
-        ) : errorMessage ? (
-          <section className="card state-box" role="alert">
-            <div
-              className="alert-banner alert-danger"
-              style={{ justifyContent: "center", marginBottom: "16px" }}
-            >
-              <span>⚠️ データの取得に失敗しました：{errorMessage}</span>
-            </div>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => {
-                void fetchCockpitAndLookups();
-              }}
-            >
-              🔄 再試行する
-            </button>
-          </section>
-        ) : projects.length === 0 ? (
-          <section className="card state-box">
-            <p
-              style={{
-                margin: "0 0 12px",
-                fontSize: "1.05rem",
-                fontWeight: 700,
-                color: "var(--text-heading)",
-              }}
-            >
-              登録されている工事データがありません
-            </p>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => {
-                void fetchCockpitAndLookups();
-              }}
-            >
-              🔄 再読み込み
-            </button>
-          </section>
-        ) : activeTab === "cockpit" || !mayRegister ? (
-          <CockpitView projects={projects} />
-        ) : (
-          <>
-            {!canRegisterCompleted(session.role) ? (
-              <div
-                className="alert-banner alert-warning"
-                role="note"
-                style={{ marginBottom: "12px" }}
-              >
-                <span>
-                  完成区分が「完成(1)」の工事への登録は承認権限の利用者のみ可能です（その工事は選択できません）。
-                </span>
-              </div>
-            ) : null}
-            <EasyCostInput
-              projects={projects}
-              companyCode={companyCode}
-              onRegistered={handleRegistered}
-              canRegisterCompleted={canRegisterCompleted(session.role)}
-            />
-          </>
-        )}
-      </main>
+    if (!dirty && !busy) return;
+    const guard = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+    window.addEventListener("beforeunload", guard);
+    return () => window.removeEventListener("beforeunload", guard);
+  }, [dirty, busy]);
+  const choose = (next: ProjectSelection) => {
+    if (busy || (next.projectCode === current.projectCode && next.branchCode === current.branchCode)) return;
+    if (dirty) { setPending(next); return; }
+    setSelection(next); setDraftVersion(value => value + 1);
+  };
+  const update = async () => {
+    setRefreshing(true); setRefreshNotice(null);
+    const success = await refresh();
+    setRefreshFailed(!success);
+    setRefreshNotice(success ? "最新の状態に更新しました。入力途中の内容は保持しています。" : "更新できないデータがあります。表示中の内容と入力は保持しています。「更新」で再取得してください。");
+    setRefreshing(false);
+  };
+  const confirm = () => {
+    if (pending === "logout") { setDirty(false); void onLogout(); }
+    else if (pending) { setDirty(false); setSelection(pending); setDraftVersion(value => value + 1); }
+    setPending(null);
+  };
+  return <div className={s.root}>
+    <a className={s.skip} href="#main-content">本文へ移動</a>
+    <header className={s.header}>
+      <div className={p.row}><span className={s.mark}><Building24Regular /></span><Title3 as="span">ProGenba</Title3><Divider vertical /><Body1>工事原価</Body1></div>
+      <div className={p.row}><Button size="large" appearance="subtle" icon={refreshing ? <Spinner size="tiny" /> : <ArrowSync20Regular />} disabled={refreshing || busy} onClick={() => void update()}>更新</Button><ThemeButton /><Avatar name={session.display_name ?? session.user_id} size={32} /><div className={mergeClasses(p.compact, s.user)}><Body1>{session.display_name ?? session.user_id}</Body1><Caption1 className={p.muted}>会社 {session.company_code} · {roleLabel(session.role)}権限</Caption1></div><Button {...restoreFocus} size="large" appearance="subtle" icon={<SignOut20Regular />} disabled={busy} onClick={() => { if (dirty) setPending("logout"); else void onLogout(); }}>ログアウト</Button></div>
+    </header>
+    <div className={s.workspace}>
+      <aside className={s.sidebar}><nav className={s.nav} aria-label="メイン機能">
+        <Button appearance="subtle" size="large" className={mergeClasses(s.navButton, activeTab === "cockpit" && s.active)} icon={<Grid24Regular />} aria-current={activeTab === "cockpit" ? "page" : undefined} onClick={() => setActiveTab("cockpit")}>工事の状況</Button>
+        <Button appearance="subtle" size="large" className={mergeClasses(s.navButton, activeTab === "input" && s.active)} icon={<Add24Regular />} disabled={!mayRegister} aria-describedby={!mayRegister ? "role-reason" : undefined} aria-current={activeTab === "input" ? "page" : undefined} onClick={() => setActiveTab("input")}>原価を登録 {dirty && <Badge size="small" appearance="tint" color="informative">入力中</Badge>}</Button>
+      </nav><div className={s.sidebarFoot}><div className={p.compact}><Divider /><Caption1 className={p.muted}>現場の記録から、<br />工事の状況を見える化。</Caption1><Caption1 className={p.muted}>ProGenba · 工事原価管理</Caption1></div></div></aside>
+      <main id="main-content" tabIndex={-1} className={s.main}><div className={mergeClasses(s.content, p.stack)}>
+        {!mayRegister && <Notice><span id="role-reason">閲覧権限で利用しています。原価の登録は、登録・承認権限の利用者にご依頼ください。</span></Notice>}
+        {refreshNotice && <Notice intent={refreshFailed ? "warning" : "success"}>{refreshNotice}</Notice>}
+        {cockpit.error && <Notice intent="error">工事の状況を取得できませんでした：{cockpit.error.message} <Button size="large" onClick={() => void update()} disabled={refreshing}>再試行</Button></Notice>}
+        {!cockpit.data && cockpit.isLoading ? <Spinner label="工事の状況を読み込んでいます…" /> : cockpit.data && projects.length === 0 ? <Notice>登録されている工事がありません。対象工事を管理者にご確認ください。</Notice> : cockpit.data ? <>
+          <section hidden={activeTab !== "cockpit"} aria-label="工事の状況"><CockpitView projects={projects} selection={current} onSelect={choose} onRegister={mayRegister ? () => setActiveTab("input") : undefined} /></section>
+          {mayRegister && <section hidden={activeTab !== "input"} aria-label="原価を登録"><EasyCostInput key={draftVersion} projects={projects} selection={current} onSelect={choose} companyCode={session.company_code} lookups={lookups.data ?? null} lookupsLoading={lookups.isLoading} lookupsError={lookups.error?.message ?? null} onRetryLookups={async () => { try { await lookups.mutate(); } catch { /* エラーはSWRの状態から表示する */ } }} onRegistered={refresh} canRegisterCompleted={canRegisterCompleted(session.role)} onDirtyChange={setDirty} onBusyChange={setBusy} onShowCockpit={() => setActiveTab("cockpit")} /></section>}
+        </> : null}
+      </div></main>
     </div>
-  );
-};
-
+    <ConfirmDialog open={pending !== null} title={pending === "logout" ? "入力を破棄してログアウトしますか？" : "入力を破棄して工事を変更しますか？"} action={pending === "logout" ? "破棄してログアウト" : "破棄して変更"} onCancel={() => setPending(null)} onConfirm={confirm}>まだ登録していない入力があります。画面を切り替えるだけなら入力は保持されますが、この操作では入力途中の内容を破棄します。</ConfirmDialog>
+  </div>;
+}
 export default App;
