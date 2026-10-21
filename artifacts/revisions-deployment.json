@@ -64,6 +64,6 @@
     "browser_shows_login_screen_not_blank": true,
     "app_log_errors": 0
   },
-  "rollback": "stop app, restore progenba_20261021T111950Z.dump per artifacts/BACKUP_RESTORE.md, and run the previous image; revision_events is a new table and does not affect business tables",
+  "rollback": "stop app, restore progenba_20261021T111950Z.dump per artifacts/BACKUP_RESTORE.md, check out the previously deployed source e5c4275 and rebuild the app image (the previous image bdda63af522a is no longer present locally); revision_events is a new table and does not affect business tables",
   "other_containers_or_volumes_modified": false
 }
