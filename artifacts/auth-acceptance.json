@@ -1,7 +1,7 @@
 {
   "passed": true,
-  "checked_at": "2026-10-21T00:01:22.166Z",
-  "commit": "b026b79ee1b3a6220e99af1e19c1c8fbf99a4601",
+  "checked_at": "2026-10-21T11:00:09.310Z",
+  "commit": "327c4072dc6102cd1ca38d16e2d15882bdbfa9c7",
   "environment": {
     "compose_project": "progenba-authtest",
     "base": "http://app:8080",
@@ -116,6 +116,23 @@
       "auth_tables": 2,
       "auth_schema_same_as_initdb": true,
       "business_digest_unchanged": true
+    },
+    "revision_workflow_003": {
+      "initdb_revision_tables": 1,
+      "revision_schema_objects": 13,
+      "revision_tables_after_drop": 0,
+      "revision_schema_objects_after_drop": 0,
+      "restart1": {
+        "revision_tables": 1,
+        "revision_schema_same_as_initdb": true,
+        "business_digest_unchanged": true
+      },
+      "restart2_idempotent": {
+        "revision_tables": 1,
+        "revision_schema_same_as_initdb": true,
+        "business_digest_unchanged": true
+      },
+      "passed": true
     },
     "passed": true
   },
